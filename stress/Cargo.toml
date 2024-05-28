@@ -1,0 +1,15 @@
+[package]
+name = "stress"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+grpc = { workspace = true }
+
+tracing = "0.1.37"
+tracing-subscriber = { workspace = true }
+
+tokio = { version = "1.28.1", features = ["full"] }
+rand = "0.8.5"
