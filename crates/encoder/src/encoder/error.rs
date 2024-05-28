@@ -17,9 +17,6 @@ pub enum VerifierError {
         row_index: usize,
         merkle_index: usize,
     },
-    UnmatchedRow {
-        row_index: usize,
-    },
 }
 
 impl Into<String> for EncoderError {

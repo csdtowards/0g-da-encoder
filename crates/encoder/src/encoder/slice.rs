@@ -37,18 +37,13 @@ impl EncodedSlice {
                 merkle_index: self.merkle.index(),
             });
         }
-        // row consistency
-        let row_scalar = self.amt.row();
-        let row_h256: Vec<_> =
-            row_scalar.iter().map(|x| scalar_to_h256(*x)).collect();
-        if self.merkle.row() != row_h256 {
-            return Err(VerifierError::UnmatchedRow {
-                row_index: self.index,
-            });
-        }
+        // derive row_merkle from row_amt
+        let row_amt = self.amt.row();
+        let row_merkle: Vec<_> =
+            row_amt.iter().map(|x| scalar_to_h256(*x)).collect();
         // verify amt, merkle
         self.amt.verify(encoder_amt, authoritative_commitment)?;
-        self.merkle.verify(authoritative_root)?;
+        self.merkle.verify(authoritative_root, row_merkle)?;
         Ok(())
     }
 }

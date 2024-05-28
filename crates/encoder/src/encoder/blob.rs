@@ -108,7 +108,7 @@ pub fn gen_err_signer_map(index: usize) -> HashMap<ErrCode, VerifierError> {
       // ErrorSigner} amt
     err_signer_map.insert(
         ErrCode::AMT(ErrCodeAMT::WrongRow),
-        VerifierError::UnmatchedRow { row_index: index },
+        VerifierError::AMT(AmtError::IncorrectProof { coset_index: index / BLOB_ROW_N, amt_index: index % BLOB_ROW_N, error: amt::AmtProofError::InconsistentCommitment } )
     );
     err_signer_map.insert(
         ErrCode::AMT(ErrCodeAMT::WrongIndex),
@@ -123,10 +123,6 @@ pub fn gen_err_signer_map(index: usize) -> HashMap<ErrCode, VerifierError> {
         VerifierError::AMT(AmtError::IncorrectCommitment),
     );
     // merkle
-    err_signer_map.insert(
-        ErrCode::Merkle(ErrCodeMerkle::WrongRow),
-        VerifierError::UnmatchedRow { row_index: index },
-    );
     err_signer_map.insert(
         ErrCode::Merkle(ErrCodeMerkle::WrongIndex),
         VerifierError::UnmatchedMerkleIndex {
