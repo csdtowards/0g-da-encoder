@@ -11,9 +11,9 @@ if [[ ! -f crates/ppot2ark/data/challenge_12 ]]; then
     cd ../..
 fi
 
-cargo run -r -p amt --features parallel --bin build_params -- 11 0
-cargo run -r -p amt --features parallel --bin build_params -- 11 1
-cargo run -r -p amt --features parallel --bin build_params -- 11 2
+cargo run -r -p amt --features parallel --bin build_params -- 11 6 0
+cargo run -r -p amt --features parallel --bin build_params -- 11 6 1
+cargo run -r -p amt --features parallel --bin build_params -- 11 6 2
 
 cargo check --all
 cargo check --all --features parallel

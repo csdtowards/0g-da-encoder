@@ -6,4 +6,3 @@ target
 crates/amt/pp/*
 crates/ppot2ark/data
 pp/*
-grpc_gpu.log

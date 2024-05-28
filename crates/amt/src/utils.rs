@@ -36,6 +36,13 @@ pub fn amtp_file_name<PE: Pairing>(
     file_name::<PE>(&prefix, depth)
 }
 
+pub fn amtp_verify_file_name<PE: Pairing>(
+    depth: usize, verify_depth: usize, coset: usize,
+) -> String {
+    let prefix = format!("amt-params-verify{}-coset{}", verify_depth, coset,);
+    file_name::<PE>(&prefix, depth)
+}
+
 #[inline]
 pub fn bitreverse(n: usize, l: usize) -> usize {
     n.reverse_bits() >> (usize::BITS as usize - l)
