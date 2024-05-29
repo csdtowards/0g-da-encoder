@@ -21,3 +21,10 @@ pub type ZgEncoderParams = ::amt::EncoderParams<
     { constants::BLOB_COL_LOG },
     { constants::BLOB_ROW_LOG },
 >;
+
+pub type ZgSignerParams = ::amt::VerifierParams<
+    ark_bn254::Bn254,
+    { constants::COSET_N },
+    { constants::BLOB_COL_LOG },
+    { constants::BLOB_ROW_LOG },
+>;

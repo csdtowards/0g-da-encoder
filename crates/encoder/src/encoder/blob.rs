@@ -5,8 +5,11 @@ use crate::{
     merkle::{blob::EncodedBlobMerkle, Bytes32},
     raw_blob::RawBlob,
     utils::{keccak_tuple, scalar_to_h256},
-    ZgEncoderParams,
+    ZgEncoderParams
 };
+
+#[cfg(any(test, feature = "testonly_code"))]
+use crate::ZgSignerParams;
 
 #[cfg(any(test, feature = "testonly_code"))]
 use crate::{
@@ -178,7 +181,9 @@ impl EncodedBlob {
     }
 
     #[cfg(any(test, feature = "testonly_code"))]
-    pub fn test_verify(&self, encoder_amt: &ZgEncoderParams) {
+    pub fn test_verify(&self, encoder_amt: &ZgSignerParams) {
+
+
         let authoritative_commitment = self.get_commitment();
         let authoritative_root = self.get_file_root();
 
@@ -215,15 +220,17 @@ mod tests {
     use super::EncodedBlob;
     use crate::{
         constants::MAX_BLOB_SIZE, encoder::error::EncoderError,
-        raw_blob::RawBlob, raw_data::RawData, ZgEncoderParams,
+        raw_blob::RawBlob, raw_data::RawData, ZgEncoderParams, ZgSignerParams,
     };
-    use amt::EncoderParams;
+    use amt::{EncoderParams, VerifierParams};
     use once_cell::sync::Lazy;
     use rand::{rngs::StdRng, Rng, SeedableRng};
     use test_case::test_case;
 
     static ENCODER: Lazy<ZgEncoderParams> =
         Lazy::new(|| EncoderParams::from_dir("../amt/pp", true));
+    static SIGNER: Lazy<ZgSignerParams> =
+        Lazy::new(|| VerifierParams::from_dir("../amt/pp"));
 
     #[test_case(0 => Ok(()); "zero sized data")]
     #[test_case(1 => Ok(()); "one sized data")]
@@ -242,7 +249,7 @@ mod tests {
         let raw_blob: RawBlob = raw_data.try_into().unwrap();
         let encoded_blob = EncodedBlob::build(&raw_blob, &ENCODER);
 
-        encoded_blob.test_verify(&ENCODER);
+        encoded_blob.test_verify(&SIGNER);
 
         Ok(())
     }

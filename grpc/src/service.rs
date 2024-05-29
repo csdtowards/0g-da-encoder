@@ -15,12 +15,12 @@ pub mod encoder {
 pub use encoder::encoder_server::EncoderServer;
 use encoder::{encoder_server::Encoder, EncodeBlobReply, EncodeBlobRequest};
 
-use amt::{ec_algebra::CanonicalSerialize, EncoderParams, PowerTau};
+use amt::{ec_algebra::CanonicalSerialize, EncoderParams, PowerTau, VerifierParams};
 use zg_encoder::{
     constants::{
         Scalar, BLOB_COL_LOG, BLOB_ROW_ENCODED, BLOB_ROW_LOG, COSET_N, PE,
     },
-    EncodedBlob, EncodedSlice, EncoderError, RawBlob, RawData, ZgEncoderParams,
+    EncodedBlob, EncodedSlice, EncoderError, RawBlob, RawData, ZgEncoderParams, ZgSignerParams,
 };
 
 pub struct EncoderService {
@@ -87,9 +87,22 @@ impl EncoderService {
         };
         Ok(reply)
     }
+}
 
-    #[cfg(test)]
-    pub fn deserialize_reply(&self, reply: EncodeBlobReply, data: &[u8]) {
+pub struct SignerService {
+    pub params: ZgSignerParams,
+}
+
+impl SignerService {
+    pub fn new(param_dir: &str) -> Self {
+        let params = VerifierParams::from_dir_mont(param_dir);
+        Self { params }
+    }
+}
+
+#[cfg(test)]
+impl SignerService {
+    pub fn deserialize_reply(&self, reply: EncodeBlobReply, encoded_data: &EncodedBlob) {
         use amt::ec_algebra::CanonicalDeserialize;
         use zg_encoder::constants::G1Curve;
         // deserialize
@@ -111,9 +124,6 @@ impl EncoderService {
             })
             .collect();
         // test consistency
-        let raw_data: RawData = data.try_into().unwrap();
-        let raw_blob: RawBlob = raw_data.into();
-        let encoded_data = EncodedBlob::build(&raw_blob, &self.params);
         assert_eq!(erasure_commitment, encoded_data.get_commitment());
         assert_eq!(storage_root, encoded_data.get_file_root());
         assert_eq!(encoded_data.get_data().len(), encoded_data_h256.len());
@@ -135,9 +145,9 @@ fn serailize_to_bytes<T: CanonicalSerialize>(data: &T) -> Vec<u8> {
 mod tests {
     use rand::{rngs::StdRng, Rng, SeedableRng};
     use test_case::test_case;
-    use zg_encoder::{constants::MAX_BLOB_SIZE, EncoderError, RawData};
+    use zg_encoder::{constants::MAX_BLOB_SIZE, EncoderError, RawData, RawBlob, EncodedBlob};
 
-    use crate::EncoderService;
+    use crate::{EncoderService, SignerService};
     #[test_case(0 => Ok(()); "zero sized data")]
     #[test_case(1 => Ok(()); "one sized data")]
     #[test_case(1234 => Ok(()); "normal sized data")]
@@ -147,7 +157,9 @@ mod tests {
         let seed = 22u64;
         let mut rng = StdRng::seed_from_u64(seed);
 
-        let encoder_service = EncoderService::new("../pp");
+        let param_dir = "../pp";
+        let encoder_service = EncoderService::new(param_dir);
+        let signer_service = SignerService::new(param_dir);
 
         for _ in 0..3 {
             // generate input
@@ -155,8 +167,12 @@ mod tests {
             rng.fill(&mut data[..]);
             // serialize
             let reply = encoder_service.process_data(&data)?;
+            // ground truth
+            let raw_data: RawData = data[..].try_into().unwrap();
+            let raw_blob: RawBlob = raw_data.into();
+            let encoded_data = EncodedBlob::build(&raw_blob, &encoder_service.params);
             // deserialize
-            encoder_service.deserialize_reply(reply, &data);
+            signer_service.deserialize_reply(reply, &encoded_data);
         }
         Ok(())
     }

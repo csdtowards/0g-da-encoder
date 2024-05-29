@@ -4,7 +4,7 @@ use crate::{
         G1Curve, Scalar, BLOB_COL_LOG, BLOB_COL_N, BLOB_ROW_ENCODED,
         BLOB_ROW_LOG, BLOB_ROW_N, PE,
     },
-    ZgEncoderParams,
+    ZgSignerParams,
 };
 use amt::BlobRow;
 use ark_ec::CurveGroup;
@@ -34,7 +34,7 @@ impl EncodedSliceAMT {
     pub(crate) fn row(&self) -> Vec<Scalar> { self.row.row.clone() }
 
     pub(crate) fn verify(
-        &self, encoder_amt: &ZgEncoderParams,
+        &self, encoder_amt: &ZgSignerParams,
         authoritative_commitment: &G1Curve,
     ) -> Result<(), AmtError> {
         // verify authoritative_commitment

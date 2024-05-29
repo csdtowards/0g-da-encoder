@@ -1,7 +1,7 @@
 use super::error::VerifierError;
 use crate::{
     amt::slice::EncodedSliceAMT, constants::G1Curve,
-    merkle::slice::EncodedSliceMerkle, utils::scalar_to_h256, ZgEncoderParams,
+    merkle::slice::EncodedSliceMerkle, utils::scalar_to_h256, ZgSignerParams,
 };
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 
@@ -20,7 +20,7 @@ impl EncodedSlice {
     }
 
     pub fn verify(
-        &self, encoder_amt: &ZgEncoderParams,
+        &self, encoder_amt: &ZgSignerParams,
         authoritative_commitment: &G1Curve, authoritative_root: &[u8; 32],
     ) -> Result<(), VerifierError> {
         // consistency between amt and merkle

@@ -13,7 +13,7 @@ use crate::{
     proofs::{AllProofs, AmtProofError, Proof},
     prove_params::AMTProofs,
     utils::{bitreverse, change_matrix_direction, index_reverse},
-    AMTParams,
+    AMTParams, AMTVerifyParams,
 };
 
 pub struct EncoderParams<
@@ -193,7 +193,7 @@ impl<PE: Pairing, const LOG_COL: usize, const LOG_ROW: usize>
     BlobRow<PE, LOG_COL, LOG_ROW>
 {
     pub fn verify(
-        &self, amt: &AMTParams<PE>, commitment: G1<PE>,
+        &self, amt: &AMTVerifyParams<PE>, commitment: G1<PE>,
     ) -> Result<(), AmtProofError> {
         let mut data = self.row.clone();
 
@@ -213,7 +213,7 @@ mod tests {
     use crate::{
         ec_algebra::{Fr, UniformRand},
         utils::change_matrix_direction,
-        AMTParams,
+        AMTParams, VerifierParams,
     };
 
     use super::EncoderParams;
@@ -226,6 +226,10 @@ mod tests {
     type PE = Bn254;
     static ENCODER: Lazy<TestEncoderContext> =
         Lazy::new(|| TestEncoderContext::from_dir("./pp", true));
+
+    type TestVerifierContext = VerifierParams<PE, COSET_N, LOG_COL, LOG_ROW>;
+    static VERIFIER: Lazy<TestVerifierContext> =
+        Lazy::new(|| TestVerifierContext::from_dir("./pp"));
 
     fn random_scalars(length: usize) -> Vec<Fr<PE>> {
         let mut rng = rand::thread_rng();
@@ -245,13 +249,13 @@ mod tests {
         for index in 0..(1 << LOG_ROW) {
             let commitment = primary_blob.commitment;
             let row = primary_blob.get_row(index);
-            row.verify(&ENCODER.amt_list[0], commitment).unwrap();
+            row.verify(&VERIFIER.amt_list[0], commitment).unwrap();
         }
 
         for index in 0..(1 << LOG_ROW) {
             let commitment = coset_blob.commitment;
             let row = coset_blob.get_row(index);
-            row.verify(&ENCODER.amt_list[1], commitment).unwrap();
+            row.verify(&VERIFIER.amt_list[1], commitment).unwrap();
         }
     }
 
