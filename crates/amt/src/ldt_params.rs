@@ -3,7 +3,7 @@ use crate::ec_algebra::{
     };
 
 pub struct LDTParams<PE: Pairing> {
-    pub g1s: Vec<G1Aff<PE>>,
+    pub g1s_ifft: Vec<G1Aff<PE>>, // let fft_domain = Radix2EvaluationDomain::<Fr<PE>>::new(1 << depth).unwrap();
     pub g2: G2<PE>
 }
 

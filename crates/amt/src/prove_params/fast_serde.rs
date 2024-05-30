@@ -103,10 +103,10 @@ pub fn write_ldt_params<W: Write>(params: &LDTParams<PE>, mut writer: W) -> Resu
 
     params.g2.serialize_uncompressed(&mut writer)?;
 
-    let degree = ark_std::log2(params.g1s.len()) as u8;
+    let degree = ark_std::log2(params.g1s_ifft.len()) as u8;
     degree.serialize_uncompressed(&mut writer)?;
 
-    for b in &params.g1s {
+    for b in &params.g1s_ifft {
         write_g1(b, &mut writer)?;
     }
 
@@ -125,7 +125,7 @@ pub fn read_ldt_params<R: Read>(mut reader: R) -> Result<LDTParams<PE>> {
 
     let g1s = read_amt_g1_line(&mut reader, 1 << degree)?;
 
-    Ok(LDTParams { g1s, g2 } )
+    Ok(LDTParams { g1s_ifft: g1s, g2 } )
 }
 
 pub fn read_ldt_verify_params<R: Read>(mut reader: R) -> Result<LDTVerifyParams<PE>> {
