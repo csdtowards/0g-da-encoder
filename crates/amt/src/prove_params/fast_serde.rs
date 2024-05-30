@@ -2,7 +2,7 @@ use crate::{
     ec_algebra::{
         BigInt, BigInteger, CanonicalDeserialize, CanonicalSerialize, Fq, Fq2,
         G1Aff, G2Aff, PrimeField, Read, Write, G2,
-    }, error::Result, AMTParams, LDTParams, PowerTau
+    }, error::Result, ldt_params::LDTVerifyParams, AMTParams, LDTParams, PowerTau
 };
 
 use ark_bn254::Bn254;
@@ -101,10 +101,10 @@ pub fn read_power_tau<R: Read>(mut reader: R) -> Result<PowerTau<PE>> {
 pub fn write_ldt_params<W: Write>(params: &LDTParams<PE>, mut writer: W) -> Result<()> {
     writer.write_all(&HEADERLDT)?;
 
+    params.g2.serialize_uncompressed(&mut writer)?;
+
     let degree = ark_std::log2(params.g1s.len()) as u8;
     degree.serialize_uncompressed(&mut writer)?;
-
-    params.g2.serialize_uncompressed(&mut writer)?;
 
     for b in &params.g1s {
         write_g1(b, &mut writer)?;
@@ -119,13 +119,24 @@ pub fn read_ldt_params<R: Read>(mut reader: R) -> Result<LDTParams<PE>> {
         return Err("Incorrect format".into());
     }
 
-    let degree = u8::deserialize_uncompressed_unchecked(&mut reader)? as usize;
-
     let g2 = G2::<PE>::deserialize_uncompressed(&mut reader)?;
+
+    let degree = u8::deserialize_uncompressed_unchecked(&mut reader)? as usize;
 
     let g1s = read_amt_g1_line(&mut reader, 1 << degree)?;
 
     Ok(LDTParams { g1s, g2 } )
+}
+
+pub fn read_ldt_verify_params<R: Read>(mut reader: R) -> Result<LDTVerifyParams<PE>> {
+    let header = <[u8; 4]>::deserialize_uncompressed_unchecked(&mut reader)?;
+    if header != HEADERLDT {
+        return Err("Incorrect format".into());
+    }
+
+    let g2 = G2::<PE>::deserialize_uncompressed(&mut reader)?;
+
+    Ok(LDTVerifyParams(g2))
 }
 
 
@@ -226,5 +237,10 @@ mod tests {
         if another != *PP {
             panic!("serde inconsistent");
         }
+    }
+
+    #[test]
+    fn test_fast_serde_ldt_params() {
+        todo!()
     }
 }

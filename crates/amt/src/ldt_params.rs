@@ -6,3 +6,5 @@ pub struct LDTParams<PE: Pairing> {
     pub g1s: Vec<G1Aff<PE>>,
     pub g2: G2<PE>
 }
+
+pub struct LDTVerifyParams<PE: Pairing>(pub G2<PE>);
