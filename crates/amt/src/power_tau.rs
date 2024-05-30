@@ -2,9 +2,9 @@ use crate::{
     ec_algebra::{
         AffineRepr, CanonicalDeserialize, CanonicalSerialize, CurveGroup, Fr,
         G1Aff, G2Aff, Pairing, UniformRand, G1, G2,
-    },
-    error, pp_file_name,
+    }, error, fast_serde, pp_file_name
 };
+use ark_bn254::Bn254;
 use ark_ff::{utils::k_adicity, Field};
 use ark_std::cfg_into_iter;
 #[cfg(feature = "parallel")]
@@ -84,7 +84,7 @@ impl<PE: Pairing> PowerTau<PE> {
     ) -> PowerTau<PE> {
         debug!("Load powers of tau");
 
-        let file = &dir.as_ref().join(pp_file_name::<PE>(expected_depth));
+        let file = &dir.as_ref().join(pp_file_name::<PE>(expected_depth, false));
         if let Ok(loaded) = Self::from_dir_inner(file, expected_depth) {
             return loaded;
         }
@@ -110,6 +110,48 @@ impl<PE: Pairing> PowerTau<PE> {
         let g1pp = self.0.into_iter().map(G1::<PE>::from).collect();
         let g2pp = self.1.into_iter().map(G2::<PE>::from).collect();
         (g1pp, g2pp)
+    }
+}
+
+impl PowerTau<Bn254> {
+    pub fn from_dir_mont(
+        dir: impl AsRef<Path>, expected_depth: usize, create_mode: bool,
+    ) -> Self {
+        debug!("Load powers of tau (mont format)");
+
+        let path = dir.as_ref().join(pp_file_name::<Bn254>(expected_depth, true));
+        if let Ok(loaded) = Self::load_cached_mont(&path) {
+            return loaded;
+        }
+        info!("Fail to load powers of tau (mont format)");
+
+        if !create_mode {
+            panic!(
+                "Fail to load public parameters for {} at depth {}, read TODO to generate",
+                std::any::type_name::<Bn254>(),
+                expected_depth
+            );
+        }
+
+        let pp = Self::from_dir(dir, expected_depth, create_mode);
+        let writer = File::create(&*path).unwrap();
+
+        info!(file = ?path, "Save generated AMT params (mont format)");
+        fast_serde::write_power_tau(&pp, writer).unwrap();
+
+        pp
+    }
+
+    fn load_cached_mont(file: impl AsRef<Path>) -> Result<Self, error::Error> {
+        let buffer = File::open(file)?;
+        Ok(fast_serde::read_power_tau(buffer)?)
+    }
+}
+
+impl<PE: Pairing> PartialEq for PowerTau<PE> {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0 
+            && self.1 == other.1
     }
 }
 

@@ -225,11 +225,11 @@ mod tests {
     type TestEncoderContext = EncoderParams<PE, COSET_N, LOG_COL, LOG_ROW>;
     type PE = Bn254;
     static ENCODER: Lazy<TestEncoderContext> =
-        Lazy::new(|| TestEncoderContext::from_dir("./pp", true));
+        Lazy::new(|| TestEncoderContext::from_dir_mont("./pp", true));
 
     type TestVerifierContext = VerifierParams<PE, COSET_N, LOG_COL, LOG_ROW>;
     static VERIFIER: Lazy<TestVerifierContext> =
-        Lazy::new(|| TestVerifierContext::from_dir("./pp"));
+        Lazy::new(|| TestVerifierContext::from_dir_mont("./pp"));
 
     fn random_scalars(length: usize) -> Vec<Fr<PE>> {
         let mut rng = rand::thread_rng();

@@ -21,8 +21,12 @@ fn file_name<PE: Pairing>(prefix: &str, depth: usize) -> String {
     format!("{}-{}-{:02}.bin", prefix, &type_hash::<PE>()[..6], depth)
 }
 
-pub fn pp_file_name<PE: Pairing>(depth: usize) -> String {
-    file_name::<PE>("power-tau", depth)
+pub fn pp_file_name<PE: Pairing>(depth: usize, mont: bool) -> String {
+    let prefix = format!(
+        "power-tau{}",
+        if mont { "-mont" } else { "" }
+    );
+    file_name::<PE>(&prefix, depth)
 }
 
 pub fn amtp_file_name<PE: Pairing>(

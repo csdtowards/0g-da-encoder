@@ -43,7 +43,10 @@ impl AMTParams<Bn254> {
 
         info!("Fail to load AMT params (mont format)");
 
-        let params = Self::from_dir(dir, expected_depth, create_mode, coset);
+        // let params = Self::from_dir(dir, expected_depth, create_mode, coset);
+        let pp = PowerTau::<Bn254>::from_dir_mont(dir, expected_depth, create_mode);
+        let params = Self::from_pp(pp, coset);
+
         let writer = File::create(&*path).unwrap();
 
         info!(file = ?path, "Save generated AMT params (mont format)");

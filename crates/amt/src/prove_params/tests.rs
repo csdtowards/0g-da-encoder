@@ -14,7 +14,7 @@ pub type PE = ark_bn254::Bn254;
 pub type TestParams = AMTParams<PE>;
 
 pub static PP: Lazy<PowerTau<PE>> =
-    Lazy::new(|| PowerTau::<PE>::from_dir("./pp", TEST_LEVEL, true));
+    Lazy::new(|| PowerTau::<PE>::from_dir_mont("./pp", TEST_LEVEL, true));
 
 pub static G1PP: Lazy<Vec<G1<PE>>> =
     Lazy::new(|| PP.0.iter().copied().map(|x| G1::<PE>::from(x)).collect());
