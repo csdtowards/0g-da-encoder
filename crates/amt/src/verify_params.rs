@@ -99,6 +99,7 @@ where G1<PE>: VariableBaseMSM<MulBase = G1Aff<PE>>
 {
     pub fn verify_proof(
         &self, ri_data: &[Fr<PE>], batch_index: usize, proof: &Proof<PE>,
+        high_commitment: G1<PE>,
         commitment: G1<PE>,
     ) -> Result<(), AmtProofError> {
         verify_amt_proof(
@@ -109,6 +110,8 @@ where G1<PE>: VariableBaseMSM<MulBase = G1Aff<PE>>
             proof,
             commitment,
             &self.g2,
+            high_commitment,
+            &self.high_g2,
         )
     }
 }
@@ -116,6 +119,7 @@ where G1<PE>: VariableBaseMSM<MulBase = G1Aff<PE>>
 pub fn verify_amt_proof<PE: Pairing>(
     basis: &[G1Aff<PE>], vanishes: &[Vec<G2Aff<PE>>], ri_data: &[Fr<PE>],
     batch_index: usize, proof: &Proof<PE>, commitment: G1<PE>, g2: &G2<PE>,
+    high_commitment: G1<PE>, high_g2: &G2<PE>,
 ) -> Result<(), AmtProofError>
 where
     G1<PE>: VariableBaseMSM<MulBase = G1Aff<PE>>,
@@ -150,8 +154,12 @@ where
         overall_commitment += commitment;
     }
     if overall_commitment != commitment {
-        Err(InconsistentCommitment)
-    } else {
+        return Err(InconsistentCommitment);
+    }
+    if PE::pairing(commitment, high_g2) != PE::pairing(high_commitment, g2) {
+        Err(FailedLowDegreeTest)
+    } 
+    else {
         Ok(())
     }
 }

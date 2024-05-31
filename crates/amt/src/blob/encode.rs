@@ -181,9 +181,9 @@ where AMTParams<PE>: AMTProofs<PE = PE>
         let row = self.blob[row_size * index..row_size * (index + 1)].to_vec();
 
         let reversed_index = bitreverse(index, LOG_ROW);
-        let proof = self.proofs.get_proof(reversed_index);
+        let (proof, high_commitment) = self.proofs.get_proof(reversed_index);
 
-        BlobRow::<PE, LOG_COL, LOG_ROW> { row, proof, index }
+        BlobRow::<PE, LOG_COL, LOG_ROW> { row, proof, high_commitment, index }
     }
 }
 
@@ -192,6 +192,7 @@ pub struct BlobRow<PE: Pairing, const LOG_COL: usize, const LOG_ROW: usize> {
     pub index: usize,
     pub row: Vec<Fr<PE>>,
     pub proof: Proof<PE>,
+    pub high_commitment: G1<PE>,
 }
 
 impl<PE: Pairing, const LOG_COL: usize, const LOG_ROW: usize>
@@ -204,7 +205,7 @@ impl<PE: Pairing, const LOG_COL: usize, const LOG_ROW: usize>
 
         index_reverse(&mut data);
         let batch_index = bitreverse(self.index, LOG_ROW);
-        amt.verify_proof(&data, batch_index, &self.proof, commitment)
+        amt.verify_proof(&data, batch_index, &self.proof, self.high_commitment, commitment)
     }
 }
 
