@@ -38,13 +38,16 @@ where AMTParams<PE>: AMTProofs<PE = PE>
         Self { amt_list }
     }
 
-    pub fn from_dir(dir: impl AsRef<Path> + Clone, create_mode: bool) -> Self {
+    pub fn from_dir(dir: impl AsRef<Path> + Clone, create_mode: bool,
+        expected_high_depth: usize,
+    ) -> Self {
         Self::from_builder(|coset| {
             AMTParams::from_dir(
                 dir.clone(),
                 LOG_COL + LOG_ROW,
                 create_mode,
                 coset,
+                expected_high_depth,
             )
         })
     }
@@ -107,6 +110,7 @@ impl<const COSET_N: usize, const LOG_COL: usize, const LOG_ROW: usize>
     #[instrument(skip_all, level = 3)]
     pub fn from_dir_mont(
         dir: impl AsRef<Path> + Clone, create_mode: bool,
+        expected_high_depth: usize,
     ) -> Self {
         info!("Load AMT params");
 
@@ -116,6 +120,7 @@ impl<const COSET_N: usize, const LOG_COL: usize, const LOG_ROW: usize>
                 LOG_COL + LOG_ROW,
                 create_mode,
                 coset,
+                expected_high_depth,
             )
         })
     }
@@ -221,15 +226,16 @@ mod tests {
     const LOG_ROW: usize = 3;
     const LOG_COL: usize = 5;
     const COSET_N: usize = 2;
+    const LOG_HIGH: usize = 10;
 
     type TestEncoderContext = EncoderParams<PE, COSET_N, LOG_COL, LOG_ROW>;
     type PE = Bn254;
     static ENCODER: Lazy<TestEncoderContext> =
-        Lazy::new(|| TestEncoderContext::from_dir_mont("./pp", true));
+        Lazy::new(|| TestEncoderContext::from_dir_mont("./pp", true, LOG_HIGH));
 
     type TestVerifierContext = VerifierParams<PE, COSET_N, LOG_COL, LOG_ROW>;
     static VERIFIER: Lazy<TestVerifierContext> =
-        Lazy::new(|| TestVerifierContext::from_dir_mont("./pp"));
+        Lazy::new(|| TestVerifierContext::from_dir_mont("./pp", LOG_HIGH));
 
     fn random_scalars(length: usize) -> Vec<Fr<PE>> {
         let mut rng = rand::thread_rng();

@@ -17,19 +17,22 @@ pub struct AMTVerifyParams<PE: Pairing> {
     pub basis: Vec<G1Aff<PE>>,
     pub vanishes: Vec<Vec<G2Aff<PE>>>,
     pub g2: G2<PE>,
+    pub high_g2: G2<PE>,
 }
 
 impl AMTVerifyParams<Bn254> {
     pub fn from_dir_mont(
         dir: impl AsRef<Path>, expected_depth: usize, verify_depth: usize,
         coset: usize,
+        expected_high_depth: usize,
     ) -> Self {
-        Self::from_dir_inner(&dir, expected_depth, verify_depth, coset, || {
+        Self::from_dir_inner(&dir, expected_depth, verify_depth, coset, expected_high_depth, || {
             AMTParams::<Bn254>::from_dir_mont(
                 &dir,
                 expected_depth,
                 false,
                 coset,
+                expected_high_depth,
             )
         })
     }
@@ -39,16 +42,18 @@ impl<PE: Pairing> AMTVerifyParams<PE> {
     pub fn from_dir(
         dir: impl AsRef<Path>, expected_depth: usize, verify_depth: usize,
         coset: usize,
+        expected_high_depth: usize,
     ) -> Self {
-        Self::from_dir_inner(&dir, expected_depth, verify_depth, coset, || {
-            AMTParams::<PE>::from_dir(&dir, expected_depth, false, coset)
+        Self::from_dir_inner(&dir, expected_depth, verify_depth, coset, expected_high_depth, || {
+            AMTParams::<PE>::from_dir(&dir, expected_depth, false, coset, expected_high_depth)
         })
     }
 
     #[instrument(skip_all, name = "load_amt_verify_params", level = 2, parent = None, fields(depth=expected_depth, verify_depth, coset))]
     fn from_dir_inner(
         dir: impl AsRef<Path>, expected_depth: usize, verify_depth: usize,
-        coset: usize, make_prover_params: impl Fn() -> AMTParams<PE>,
+        coset: usize, expected_high_depth: usize,
+        make_prover_params: impl Fn() -> AMTParams<PE>,
     ) -> Self {
         debug!(
             depth = expected_depth,
@@ -56,7 +61,7 @@ impl<PE: Pairing> AMTVerifyParams<PE> {
         );
 
         let file_name =
-            amtp_verify_file_name::<PE>(expected_depth, verify_depth, coset);
+            amtp_verify_file_name::<PE>(expected_depth, verify_depth, coset, expected_high_depth);
         let path = dir.as_ref().join(file_name);
 
         if let Ok(params) = Self::load_cached(&path) {
@@ -70,6 +75,7 @@ impl<PE: Pairing> AMTVerifyParams<PE> {
             basis: amt_params.basis.clone(),
             vanishes: amt_params.vanishes[0..verify_depth].to_vec(),
             g2: amt_params.g2,
+            high_g2: amt_params.high_g2,
         };
 
         let buffer = File::create(&path).unwrap();

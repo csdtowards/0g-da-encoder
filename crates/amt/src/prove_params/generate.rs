@@ -25,12 +25,13 @@ impl AMTParams<Bn254> {
     pub fn from_dir_mont(
         dir: impl AsRef<Path>, expected_depth: usize, create_mode: bool,
         coset: usize,
+        expected_high_depth: usize,
     ) -> Self {
         debug!(
             depth = expected_depth,
             coset, "Load AMT params (mont format)"
         );
-        let file_name = amtp_file_name::<Bn254>(expected_depth, coset, true);
+        let file_name = amtp_file_name::<Bn254>(expected_depth, coset, true, expected_high_depth);
         let path = dir.as_ref().join(file_name);
 
         if let Ok(params) = Self::load_cached_mont(&path) {
@@ -43,21 +44,19 @@ impl AMTParams<Bn254> {
 
         info!("Fail to load AMT params (mont format)");
 
-        // let params = Self::from_dir(dir, expected_depth, create_mode, coset);
-        let pp = PowerTau::<Bn254>::from_dir_mont(dir, expected_depth, create_mode);
-        let params = Self::from_pp(pp, coset);
-
+        let params = Self::from_dir(dir, expected_depth, create_mode, coset, expected_high_depth);
+        
         let writer = File::create(&*path).unwrap();
 
         info!(file = ?path, "Save generated AMT params (mont format)");
-        fast_serde::write(&params, writer).unwrap();
+        fast_serde::write_amt_params(&params, writer).unwrap();
 
         params
     }
 
     fn load_cached_mont(file: impl AsRef<Path>) -> Result<Self, error::Error> {
         let buffer = File::open(file)?;
-        Ok(fast_serde::read(buffer)?)
+        Ok(fast_serde::read_amt_params(buffer)?)
     }
 }
 
@@ -66,13 +65,14 @@ impl<PE: Pairing> AMTParams<PE> {
     pub fn from_dir(
         dir: impl AsRef<Path>, expected_depth: usize, create_mode: bool,
         coset: usize,
+        expected_high_depth: usize,
     ) -> Self {
         debug!(
             depth = expected_depth,
             coset, "Load AMT params (unmont format)"
         );
 
-        let file_name = amtp_file_name::<PE>(expected_depth, coset, false);
+        let file_name = amtp_file_name::<PE>(expected_depth, coset, false, expected_high_depth);
         let path = dir.as_ref().join(file_name);
 
         if let Ok(params) = Self::load_cached(&path) {
@@ -87,8 +87,7 @@ impl<PE: Pairing> AMTParams<PE> {
 
         info!("Construct a new AMT params");
 
-        let pp = PowerTau::<PE>::from_dir(dir, expected_depth, create_mode);
-
+        let pp = PowerTau::<PE>::from_dir(dir, expected_depth, create_mode, expected_high_depth);
         let params = Self::from_pp(pp, coset);
         let buffer = File::create(&path).unwrap();
 
@@ -127,8 +126,11 @@ impl<PE: Pairing> AMTParams<PE> {
     pub fn from_pp(pp: PowerTau<PE>, coset: usize) -> Self {
         info!("Generate AMT params from powers of tau");
 
-        let (mut g1pp, mut g2pp) = pp.into_projective();
-
+        let (mut g1pp, mut g2pp, mut high_g1pp, mut high_g2pp)
+            = pp.into_projective();
+        
+        assert_eq!(high_g2pp.len(), 1);
+        assert_eq!(g1pp.len(), high_g1pp.len());
         assert_eq!(g1pp.len(), g2pp.len());
         assert!(g1pp.len().is_power_of_two());
         let length = g1pp.len();
@@ -142,6 +144,14 @@ impl<PE: Pairing> AMTParams<PE> {
                 |(idx, x): (_, &mut G1<PE>)| *x *= w.pow([idx as u64]),
             );
             cfg_iter_mut!(g2pp).enumerate().for_each(
+                |(idx, x): (_, &mut G2<PE>)| *x *= w.pow([idx as u64]),
+            );
+
+            debug!(coset, "Adjust ldt params according to coset index");
+            cfg_iter_mut!(high_g1pp).enumerate().for_each(
+                |(idx, x): (_, &mut G1<PE>)| *x *= w.pow([idx as u64]),
+            );
+            cfg_iter_mut!(high_g2pp).enumerate().for_each(
                 |(idx, x): (_, &mut G2<PE>)| *x *= w.pow([idx as u64]),
             );
         }
@@ -158,8 +168,10 @@ impl<PE: Pairing> AMTParams<PE> {
         let vanishes: Vec<Vec<G2Aff<PE>>> = (1..=depth)
             .map(|d| Self::enact(Self::gen_vanishes(&g2pp[..], d)))
             .collect();
+        let high_basis: Vec<G1Aff<PE>> =
+            Self::enact(Self::gen_basis(&high_g1pp[..], &fft_domain));
 
-        Self::new(basis, quotients, vanishes, g2pp[0])
+        Self::new(basis, quotients, vanishes, g2pp[0], high_basis, high_g2pp[0])
     }
 
     fn gen_basis(
@@ -243,7 +255,7 @@ mod tests {
         points[index] = Fr::<PE>::one();
 
         let coeff = DOMAIN.ifft(&points);
-        G1::<PE>::msm(&PP.0, &coeff[..]).unwrap()
+        G1::<PE>::msm(&PP.g1pp, &coeff[..]).unwrap()
     }
 
     #[test]
@@ -259,7 +271,7 @@ mod tests {
         (0..size)
             .rev()
             .map(|j| W.pow(&[(index * j) as u64]))
-            .zip(PP.0[0..size].iter())
+            .zip(PP.g1pp[0..size].iter())
             .map(|(exp, base)| *base * exp)
             .sum::<G1<PE>>()
             * DOMAIN.size_inv
@@ -282,7 +294,7 @@ mod tests {
         (0..size)
             .rev()
             .map(|j| W.pow(&[(index * step * j) as u64]))
-            .zip(PP.1.iter().step_by(step))
+            .zip(PP.g2pp.iter().step_by(step))
             .map(|(exp, base)| *base * exp)
             .sum()
     }

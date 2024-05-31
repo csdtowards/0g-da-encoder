@@ -2,7 +2,7 @@ use crate::{
     ec_algebra::{
         BigInt, BigInteger, CanonicalDeserialize, CanonicalSerialize, Fq, Fq2,
         G1Aff, G2Aff, PrimeField, Read, Write, G2,
-    }, error::Result, ldt_params::LDTVerifyParams, AMTParams, LDTParams, PowerTau
+    }, error::Result, AMTParams, PowerTau
 };
 
 use ark_bn254::Bn254;
@@ -13,16 +13,16 @@ use std::marker::PhantomData;
 
 const HEADER: [u8; 4] = *b"bamt";
 const HEADERPWT: [u8; 4] = *b"bpwt";
-const HEADERLDT: [u8; 4] = *b"bldt";
 type PE = Bn254;
 
-pub fn write<W: Write>(params: &AMTParams<PE>, mut writer: W) -> Result<()> {
+pub fn write_amt_params<W: Write>(params: &AMTParams<PE>, mut writer: W) -> Result<()> {
     writer.write_all(&HEADER)?;
 
     let degree = ark_std::log2(params.basis.len()) as u8;
     degree.serialize_uncompressed(&mut writer)?;
 
     params.g2.serialize_uncompressed(&mut writer)?;
+    params.high_g2.serialize_uncompressed(&mut writer)?;
 
     for b in &params.basis {
         write_g1(b, &mut writer)?;
@@ -39,17 +39,25 @@ pub fn write<W: Write>(params: &AMTParams<PE>, mut writer: W) -> Result<()> {
             write_g2(b, &mut writer)?;
         }
     }
+
+    for b in &params.high_basis {
+        write_g1(b, &mut writer)?;
+    }
+
     Ok(())
 }
 
-pub fn read<R: Read>(mut reader: R) -> Result<AMTParams<PE>> {
+pub fn read_amt_params<R: Read>(mut reader: R) -> Result<AMTParams<PE>> {
     let header = <[u8; 4]>::deserialize_uncompressed_unchecked(&mut reader)?;
     if header != HEADER {
         return Err("Incorrect format".into());
     }
 
     let degree = u8::deserialize_uncompressed_unchecked(&mut reader)? as usize;
+
     let g2 = G2::<PE>::deserialize_uncompressed(&mut reader)?;
+
+    let high_g2 = G2::<PE>::deserialize_uncompressed(&mut reader)?;
 
     let basis = read_amt_g1_line(&mut reader, 1 << degree)?;
 
@@ -63,21 +71,29 @@ pub fn read<R: Read>(mut reader: R) -> Result<AMTParams<PE>> {
         vanishes.push(read_amt_g2_line(&mut reader, 1 << (d + 1))?);
     }
 
-    Ok(AMTParams::new(basis, quotients, vanishes, g2))
+    let high_basis = read_amt_g1_line(&mut reader, 1 << degree)?;
+
+    Ok(AMTParams::new(basis, quotients, vanishes, g2, high_basis, high_g2))
 }
 
 pub fn write_power_tau<W: Write>(params: &PowerTau<PE>, mut writer: W) -> Result<()> {
     writer.write_all(&HEADERPWT)?;
 
-    let degree = ark_std::log2(params.0.len()) as u8;
+    let degree = ark_std::log2(params.g1pp.len()) as u8;
     degree.serialize_uncompressed(&mut writer)?;
 
-    for b in &params.0 {
+    params.high_g2.serialize_uncompressed(&mut writer)?;
+
+    for b in &params.g1pp {
         write_g1(b, &mut writer)?;
     }
 
-    for b in &params.1 {
+    for b in &params.g2pp {
         write_g2(b, &mut writer)?;
+    }
+
+    for b in &params.high_g1pp {
+        write_g1(b, &mut writer)?;
     }
 
     Ok(())
@@ -91,54 +107,16 @@ pub fn read_power_tau<R: Read>(mut reader: R) -> Result<PowerTau<PE>> {
 
     let degree = u8::deserialize_uncompressed_unchecked(&mut reader)? as usize;
 
-    let g1s = read_amt_g1_line(&mut reader, 1 << degree)?;
+    let high_g2 = G2::<PE>::deserialize_uncompressed(&mut reader)?;
 
-    let g2s = read_amt_g2_line(&mut reader, 1 << degree)?;
+    let g1pp = read_amt_g1_line(&mut reader, 1 << degree)?;
 
-    Ok(PowerTau(g1s, g2s))
+    let g2pp = read_amt_g2_line(&mut reader, 1 << degree)?;
+
+    let high_g1pp = read_amt_g1_line(&mut reader, 1 << degree)?;
+
+    Ok(PowerTau{g1pp, g2pp, high_g1pp, high_g2})
 }
-
-pub fn write_ldt_params<W: Write>(params: &LDTParams<PE>, mut writer: W) -> Result<()> {
-    writer.write_all(&HEADERLDT)?;
-
-    params.g2.serialize_uncompressed(&mut writer)?;
-
-    let degree = ark_std::log2(params.g1s_ifft.len()) as u8;
-    degree.serialize_uncompressed(&mut writer)?;
-
-    for b in &params.g1s_ifft {
-        write_g1(b, &mut writer)?;
-    }
-
-    Ok(())
-}
-
-pub fn read_ldt_params<R: Read>(mut reader: R) -> Result<LDTParams<PE>> {
-    let header = <[u8; 4]>::deserialize_uncompressed_unchecked(&mut reader)?;
-    if header != HEADERLDT {
-        return Err("Incorrect format".into());
-    }
-
-    let g2 = G2::<PE>::deserialize_uncompressed(&mut reader)?;
-
-    let degree = u8::deserialize_uncompressed_unchecked(&mut reader)? as usize;
-
-    let g1s = read_amt_g1_line(&mut reader, 1 << degree)?;
-
-    Ok(LDTParams { g1s_ifft: g1s, g2 } )
-}
-
-pub fn read_ldt_verify_params<R: Read>(mut reader: R) -> Result<LDTVerifyParams<PE>> {
-    let header = <[u8; 4]>::deserialize_uncompressed_unchecked(&mut reader)?;
-    if header != HEADERLDT {
-        return Err("Incorrect format".into());
-    }
-
-    let g2 = G2::<PE>::deserialize_uncompressed(&mut reader)?;
-
-    Ok(LDTVerifyParams(g2))
-}
-
 
 #[inline]
 pub fn write_g1<W: Write>(b: &G1Aff<PE>, mut writer: W) -> Result<()> {
@@ -215,14 +193,14 @@ fn read_amt_g2_line<R: Read>(
 
 #[cfg(test)]
 mod tests {
-    use super::{super::tests::{AMT, PP}, read, read_power_tau, write, write_power_tau};
+    use super::{super::tests::{AMT, PP}, read_amt_params, read_power_tau, write_amt_params, write_power_tau};
 
     #[test]
     fn test_fast_serde() {
         let mut buffer = Vec::new();
         let writer: &mut Vec<u8> = &mut buffer;
-        write(&AMT, writer).unwrap();
-        let another = read(&*buffer).unwrap();
+        write_amt_params(&AMT, writer).unwrap();
+        let another = read_amt_params(&*buffer).unwrap();
         if another != *AMT {
             panic!("serde inconsistent");
         }
@@ -237,10 +215,5 @@ mod tests {
         if another != *PP {
             panic!("serde inconsistent");
         }
-    }
-
-    #[test]
-    fn test_fast_serde_ldt_params() {
-        todo!()
     }
 }

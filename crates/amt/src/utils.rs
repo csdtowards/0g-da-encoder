@@ -21,9 +21,10 @@ fn file_name<PE: Pairing>(prefix: &str, depth: usize) -> String {
     format!("{}-{}-{:02}.bin", prefix, &type_hash::<PE>()[..6], depth)
 }
 
-pub fn pp_file_name<PE: Pairing>(depth: usize, mont: bool) -> String {
+pub fn pp_file_name<PE: Pairing>(depth: usize, high_depth: usize, mont: bool) -> String {
     let prefix = format!(
-        "power-tau{}",
+        "power-tau-high{}{}",
+        high_depth,
         if mont { "-mont" } else { "" }
     );
     file_name::<PE>(&prefix, depth)
@@ -31,10 +32,12 @@ pub fn pp_file_name<PE: Pairing>(depth: usize, mont: bool) -> String {
 
 pub fn amtp_file_name<PE: Pairing>(
     depth: usize, coset: usize, mont: bool,
+    high_depth: usize,
 ) -> String {
     let prefix = format!(
-        "amt-params-coset{}{}",
+        "amt-params-coset{}-high{}{}",
         coset,
+        high_depth,
         if mont { "-mont" } else { "" }
     );
     file_name::<PE>(&prefix, depth)
@@ -42,8 +45,9 @@ pub fn amtp_file_name<PE: Pairing>(
 
 pub fn amtp_verify_file_name<PE: Pairing>(
     depth: usize, verify_depth: usize, coset: usize,
+    high_depth: usize,
 ) -> String {
-    let prefix = format!("amt-params-verify{}-coset{}", verify_depth, coset,);
+    let prefix = format!("amt-params-verify{}-coset{}-high{}", verify_depth, coset, high_depth);
     file_name::<PE>(&prefix, depth)
 }
 

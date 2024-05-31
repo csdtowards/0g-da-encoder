@@ -21,6 +21,8 @@ pub struct AMTParams<PE: Pairing> {
     pub quotients: Vec<Vec<G1Aff<PE>>>,
     pub vanishes: Vec<Vec<G2Aff<PE>>>,
     pub g2: G2<PE>,
+    pub high_basis: Vec<G1Aff<PE>>,
+    pub high_g2: G2<PE>,
     #[cfg(feature = "cuda")]
     device_mem: RwLock<Option<prove_gpu::MsmBasisOnDevice>>,
 }
@@ -29,12 +31,15 @@ impl<PE: Pairing> AMTParams<PE> {
     pub fn new(
         basis: Vec<G1Aff<PE>>, quotients: Vec<Vec<G1Aff<PE>>>,
         vanishes: Vec<Vec<G2Aff<PE>>>, g2: G2<PE>,
+        high_basis: Vec<G1Aff<PE>>, high_g2: G2<PE>,
     ) -> Self {
         Self {
             basis,
             quotients,
             vanishes,
             g2,
+            high_basis,
+            high_g2,
             #[cfg(feature = "cuda")]
             device_mem: RwLock::new(None),
         }
@@ -47,6 +52,8 @@ impl<PE: Pairing> PartialEq for AMTParams<PE> {
             && self.quotients == other.quotients
             && self.vanishes == other.vanishes
             && self.g2 == other.g2
+            && self.high_basis == other.high_basis
+            && self.high_g2 == other.high_g2
     }
 }
 

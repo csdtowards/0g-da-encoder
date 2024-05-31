@@ -18,7 +18,7 @@ use encoder::{encoder_server::Encoder, EncodeBlobReply, EncodeBlobRequest};
 use amt::{ec_algebra::CanonicalSerialize, EncoderParams, PowerTau, VerifierParams};
 use zg_encoder::{
     constants::{
-        Scalar, BLOB_COL_LOG, BLOB_ROW_ENCODED, BLOB_ROW_LOG, COSET_N, PE,
+        Scalar, BLOB_COL_LOG, BLOB_ROW_ENCODED, BLOB_ROW_LOG, COSET_N, HIGH_DEPTH, PE
     },
     EncodedBlob, EncodedSlice, EncoderError, RawBlob, RawData, ZgEncoderParams, ZgSignerParams,
 };
@@ -29,7 +29,7 @@ pub struct EncoderService {
 
 impl EncoderService {
     pub fn new(param_dir: &str) -> Self {
-        let params = EncoderParams::from_dir_mont(param_dir, true);
+        let params = EncoderParams::from_dir_mont(param_dir, true, HIGH_DEPTH);
         Self { params }
     }
 }
@@ -95,7 +95,7 @@ pub struct SignerService {
 
 impl SignerService {
     pub fn new(param_dir: &str) -> Self {
-        let params = VerifierParams::from_dir_mont(param_dir);
+        let params = VerifierParams::from_dir_mont(param_dir, HIGH_DEPTH);
         Self { params }
     }
 }

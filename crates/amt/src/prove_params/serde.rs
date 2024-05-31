@@ -28,7 +28,17 @@ impl<PE: Pairing> CanonicalDeserialize for AMTParams<PE> {
             compress,
             validate,
         )?;
-        Ok(AMTParams::new(basis, quotients, vanishes, g2))
+        let high_basis = CanonicalDeserialize::deserialize_with_mode(
+            &mut reader,
+            compress,
+            validate,
+        )?;
+        let high_g2 = CanonicalDeserialize::deserialize_with_mode(
+            &mut reader,
+            compress,
+            validate,
+        )?;
+        Ok(AMTParams::new(basis, quotients, vanishes, g2, high_basis, high_g2))
     }
 }
 
@@ -77,6 +87,16 @@ impl<PE: Pairing> ark_serialize::CanonicalSerialize for AMTParams<PE> {
             &mut writer,
             compress,
         )?;
+        CanonicalSerialize::serialize_with_mode(
+            &self.high_basis,
+            &mut writer,
+            compress,
+        )?;
+        CanonicalSerialize::serialize_with_mode(
+            &self.high_g2,
+            &mut writer,
+            compress,
+        )?;
         Ok(())
     }
 
@@ -86,6 +106,8 @@ impl<PE: Pairing> ark_serialize::CanonicalSerialize for AMTParams<PE> {
         size += CanonicalSerialize::serialized_size(&self.quotients, compress);
         size += CanonicalSerialize::serialized_size(&self.vanishes, compress);
         size += CanonicalSerialize::serialized_size(&self.g2, compress);
+        size += CanonicalSerialize::serialized_size(&self.high_basis, compress);
+        size += CanonicalSerialize::serialized_size(&self.high_g2, compress);
         size
     }
 }

@@ -12,11 +12,15 @@ pub type G2Curve = G2Projective;
 pub const BLOB_ROW_LOG: usize = 10;
 #[cfg(not(any(test, feature = "testonly_code")))]
 pub const BLOB_COL_LOG: usize = 10;
+#[cfg(not(any(test, feature = "testonly_code")))]
+pub const HIGH_DEPTH: usize = 28;
 
 #[cfg(any(test, feature = "testonly_code"))]
 pub const BLOB_ROW_LOG: usize = 6;
 #[cfg(any(test, feature = "testonly_code"))]
 pub const BLOB_COL_LOG: usize = 5;
+#[cfg(any(test, feature = "testonly_code"))]
+pub const HIGH_DEPTH: usize = 13;
 
 pub const COSET_N: usize = 3;
 
@@ -31,3 +35,4 @@ pub const ENCODED_BLOB_SIZE: usize = BLOB_ROW_ENCODED * BLOB_COL_N;
 pub const MAX_BLOB_SIZE: usize = RAW_UNIT * BLOB_ROW_N * BLOB_COL_N;
 
 const_assert!(1usize << <Scalar as FftField>::TWO_ADICITY >= ENCODED_BLOB_SIZE);
+const_assert!(HIGH_DEPTH >= BLOB_ROW_LOG + BLOB_COL_LOG);
