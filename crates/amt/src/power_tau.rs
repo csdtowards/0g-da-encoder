@@ -15,6 +15,8 @@ use std::{
 };
 use tracing::{debug, info};
 
+pub struct PowerTauLight<PE: Pairing>(pub Vec<G1Aff<PE>>, pub Vec<G2Aff<PE>>);
+
 #[derive(CanonicalDeserialize, CanonicalSerialize, Clone)]
 pub struct PowerTau<PE: Pairing> {
     pub g1pp: Vec<G1Aff<PE>>, 
@@ -171,6 +173,19 @@ impl<PE: Pairing> PartialEq for PowerTau<PE> {
             && self.g2pp == other.g2pp
             && self.high_g1pp == other.high_g1pp
             && self.high_g2 == other.high_g2
+    }
+}
+
+impl<PE: Pairing> PowerTau<PE> {
+    pub fn check_ldt(&self) {
+        assert_eq!(self.g1pp.len(), self.g2pp.len());
+        assert_eq!(self.g1pp.len(), self.high_g1pp.len());
+        let g2: G2<PE> = self.g2pp[0].into();
+        let _ = self.g1pp.iter()
+            .zip(self.high_g1pp.iter())
+            .map(|(g1, high_g1)| 
+                assert_eq!(PE::pairing(g1, self.high_g2), PE::pairing(high_g1, g2))
+            );
     }
 }
 

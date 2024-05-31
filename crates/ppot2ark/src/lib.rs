@@ -15,6 +15,7 @@ use memmap::MmapOptions;
 use std::fs::{self, read, OpenOptions};
 
 use ark_bn254::Bn254;
+type PowerTauLight = amt::PowerTauLight<Bn254>;
 type PowerTau = amt::PowerTau<Bn254>;
 
 #[derive(Debug, Clone, Copy)]
@@ -40,7 +41,7 @@ fn from_ppot_file_inner<'a>(
     input_path: &str, input_type: InputType, file_size: usize,
     read_from: usize, read_size_pow: usize, chunk_size_pow: usize,
     parameters: &'a CeremonyParams<Bn256>,
-) -> Result<PowerTau, String> {
+) -> Result<PowerTauLight, String> {
     // let read_from = (1 << read_from)
     // - 1;
     let read_size = 1 << read_size_pow;
@@ -103,13 +104,13 @@ fn from_ppot_file_inner<'a>(
         remaining_size -= current_chunk_size;
     }
 
-    Ok(amt::PowerTau(g1, g2))
+    Ok(amt::PowerTauLight(g1, g2))
 }
 
 pub fn from_ppot_file(
     input_path: &str, input_type: InputType, file_size_pow: usize,
     read_from: usize, read_size_pow: usize, chunk_size_pow: usize,
-) -> Result<PowerTau, String> {
+) -> Result<PowerTauLight, String> {
     let params = CeremonyParams::<Bn256>::new(file_size_pow, file_size_pow);
     from_ppot_file_inner(
         input_path,
@@ -120,6 +121,22 @@ pub fn from_ppot_file(
         chunk_size_pow,
         &params,
     )
+}
+
+pub fn from_ppot_file_ldt(
+    input_path: &str, input_type: InputType, file_size_pow: usize,
+    read_size_pow: usize, chunk_size_pow: usize,
+) -> Result<PowerTau, String> {
+    let amt::PowerTauLight(g1pp, g2pp) = from_ppot_file(
+        input_path, input_type, file_size_pow,
+        0, read_size_pow, chunk_size_pow,
+    )?;
+    let high_read_from = (1 << file_size_pow) - (1 << read_size_pow);
+    let amt::PowerTauLight(high_g1pp, high_g2pp) = from_ppot_file(
+        input_path, input_type, file_size_pow,
+        high_read_from, read_size_pow, chunk_size_pow,
+    )?;
+    Ok(amt::PowerTau { g1pp, g2pp, high_g1pp, high_g2: high_g2pp[0].into()})
 }
 
 #[cfg(test)]
@@ -152,6 +169,21 @@ mod tests {
             .arg(degree.to_string())
             .output()
             .expect("Failed to execute command");
+    }
+
+    #[test]
+    fn test_from_ppot_file_ldt() {
+        let input_path = format!("{}/data", crate_path());
+        let input_type = InputType::Challenge;
+        let file_size_pow = 12;
+        let read_size_pow = 8;
+        let chunk_size_pow = 10;
+
+        prepare_test_file(input_type, file_size_pow);
+        let pot = 
+            from_ppot_file_ldt(&input_path, input_type, file_size_pow, read_size_pow, chunk_size_pow)
+            .unwrap();
+        pot.check_ldt();
     }
 
     #[test]
@@ -201,14 +233,14 @@ mod tests {
         assert!(matches!(pot, Err(ref msg) if msg == "too long to read"));
     }
 
-    #[ignore = "heavy task"]
+    //#[ignore = "heavy task"]
     #[test]
     fn test_load_from_high_deg_response_nomal() {
         // expect to deg 28
         let input_path = format!("{}/data", crate_path());
         let input_type = InputType::Response;
-        let file_size_pow = 26;
-        let read_size_pow = 20;
+        let file_size_pow = 12;
+        let read_size_pow = 8;
         let chunk_size_pow = 10;
         let read_from = 2u32.pow(file_size_pow) - 2u32.pow(read_size_pow);
 
