@@ -4,6 +4,7 @@ mod adapter;
 
 pub use adapter::Adapter;
 
+use amt::{fast_serde::write_power_tau, pp_file_name};
 pub use ark_ec::pairing::Pairing;
 pub use bellman_ce::pairing::bn256::Bn256;
 pub use powersoftau::{
@@ -12,11 +13,13 @@ pub use powersoftau::{
 };
 
 use memmap::MmapOptions;
-use std::fs::{self, read, OpenOptions};
+use zg_encoder::constants::{BLOB_COL_LOG, BLOB_ROW_LOG, HIGH_DEPTH};
+use std::{fs::{self, read, File, OpenOptions}, path::Path};
 
 use ark_bn254::Bn254;
 type PowerTauLight = amt::PowerTauLight<Bn254>;
 type PowerTau = amt::PowerTau<Bn254>;
+use project_root;
 
 #[derive(Debug, Clone, Copy)]
 pub enum InputType {
@@ -125,13 +128,14 @@ pub fn from_ppot_file(
 
 pub fn from_ppot_file_ldt(
     input_path: &str, input_type: InputType, file_size_pow: usize,
-    read_size_pow: usize, chunk_size_pow: usize,
+    read_size_pow: usize, high_read_size_pow: usize,
+    chunk_size_pow: usize,
 ) -> Result<PowerTau, String> {
     let amt::PowerTauLight(g1pp, g2pp) = from_ppot_file(
         input_path, input_type, file_size_pow,
         0, read_size_pow, chunk_size_pow,
     )?;
-    let high_read_from = (1 << file_size_pow) - (1 << read_size_pow);
+    let high_read_from = (1 << high_read_size_pow) - (1 << read_size_pow);
     let amt::PowerTauLight(high_g1pp, high_g2pp) = from_ppot_file(
         input_path, input_type, file_size_pow,
         high_read_from, read_size_pow, chunk_size_pow,
@@ -139,18 +143,44 @@ pub fn from_ppot_file_ldt(
     Ok(amt::PowerTau { g1pp, g2pp, high_g1pp, high_g2: high_g2pp[0].into()})
 }
 
+pub fn load_save_power_tau(
+    input_path: &str, input_type: InputType, file_size_pow: usize,
+    read_size_pow: usize, high_read_size_pow: usize,
+    chunk_size_pow: usize,
+    dir: impl AsRef<Path>,
+) -> Result<(), String> {
+    let power_tau = 
+        from_ppot_file_ldt(input_path, input_type, file_size_pow, read_size_pow, high_read_size_pow, chunk_size_pow)?;
+    let path = dir.as_ref().join(pp_file_name::<Bn254>(read_size_pow, high_read_size_pow, true));
+    let writer = File::create(&*path).unwrap();
+    write_power_tau(&power_tau, writer).unwrap();
+    Ok(())
+}
+
+fn main() {
+    let input_path = format!("{}/data", crate_path());
+    let input_type = InputType::Challenge;
+    let file_size_pow = 12;
+    let read_size_pow = BLOB_COL_LOG + BLOB_ROW_LOG;
+    let high_read_size_pow = HIGH_DEPTH;
+    let chunk_size_pow = 10;
+    let dir = "../pp";
+    let pot = 
+        load_save_power_tau(&input_path, input_type, file_size_pow, read_size_pow, high_read_size_pow, chunk_size_pow, dir)
+        .unwrap();
+}
+
+fn crate_path() -> String {
+    let mut p = project_root::get_project_root().unwrap();
+    p.push("crates/ppot2ark");
+    p.to_str().unwrap().into()
+}
+
 #[cfg(test)]
 mod tests {
     use std::{fs::read, path::PathBuf, process::Command};
 
     use super::*;
-    use project_root;
-
-    fn crate_path() -> String {
-        let mut p = project_root::get_project_root().unwrap();
-        p.push("crates/ppot2ark");
-        p.to_str().unwrap().into()
-    }
 
     fn data_path() -> String { format!("{}/data", crate_path()) }
 
@@ -177,11 +207,12 @@ mod tests {
         let input_type = InputType::Challenge;
         let file_size_pow = 12;
         let read_size_pow = 8;
+        let high_read_size_pow = 11;
         let chunk_size_pow = 10;
 
         prepare_test_file(input_type, file_size_pow);
         let pot = 
-            from_ppot_file_ldt(&input_path, input_type, file_size_pow, read_size_pow, chunk_size_pow)
+            from_ppot_file_ldt(&input_path, input_type, file_size_pow, read_size_pow, high_read_size_pow, chunk_size_pow)
             .unwrap();
         pot.check_ldt();
     }
