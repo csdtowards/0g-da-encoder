@@ -10,7 +10,7 @@ use amt::ec_algebra::UniformRand;
 use ark_bn254::Bn254;
 use rand::Rng;
 use zg_encoder::{
-    constants::{MAX_BLOB_SIZE, RAW_BLOB_SIZE},
+    constants::{HIGH_DEPTH, MAX_BLOB_SIZE, RAW_BLOB_SIZE},
     ZgEncoderParams,
 };
 
@@ -36,7 +36,7 @@ fn main() {
 
     let start = Instant::now();
 
-    let params = ZgEncoderParams::from_dir_mont("./pp", false);
+    let params = ZgEncoderParams::from_dir_mont("./pp", false, HIGH_DEPTH);
     println!("Load time elapsed {:?}", start.elapsed());
 
     params.warmup();

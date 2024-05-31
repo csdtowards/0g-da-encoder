@@ -48,8 +48,9 @@ impl AMTParams<PE> {
 
         let quotients = self.quotients[..height].iter().flatten();
         let basis = self.basis.iter();
+        let high_basis = self.high_basis.iter();
 
-        let to_upload: Vec<_> = quotients.chain(basis).copied().collect();
+        let to_upload: Vec<_> = quotients.chain(basis).chain(high_basis).copied().collect();
         let device_data = upload_multiexp_bases_st(&to_upload[..]).unwrap(); // TODO: multiple calls may
                                                                              // fail: ContextAlreadyInUse
         *device_mem = Some(MsmBasisOnDevice(device_data, height));
@@ -78,7 +79,7 @@ impl AMTParams<PE> {
             .map(PrimeFieldRepr::to_bigint)
             .collect();
 
-        assert_eq!(gpu_bases.size(), input_len * (height + 1) * affine_size());
+        assert_eq!(gpu_bases.size(), input_len * (height + 2) * affine_size());
         assert_eq!(exponents.len(), input_len);
 
         let lines: Vec<_> = multiple_multiexp_mt(
@@ -98,10 +99,12 @@ impl AMTParams<PE> {
     ) -> (G1<PE>, AllProofs<PE>) {
         let num_batches = 1usize << height;
 
-        assert_eq!(lines.len(), (height + 1) * num_batches);
+        assert_eq!(lines.len(), (height + 2) * num_batches);
 
-        let (raw_proofs, last_layer_comm) =
+        let (raw_proofs, last_layers) =
             lines.split_at(height * num_batches);
+        let (last_layer_comm, last_layer_ldt) =
+            last_layers.split_at(num_batches);
 
         let (commitment, commitments) =
             self.build_commitment_tree(last_layer_comm);
@@ -114,11 +117,14 @@ impl AMTParams<PE> {
 
         assert_eq!(height, proofs.len());
 
+        let high_commitment = self.build_high_commitment(last_layer_ldt);
+
         let all_proofs = AllProofs {
             commitments,
             proofs,
             input_len: self.len(),
             batch_size,
+            high_commitment,
         };
         (commitment.into_group(), all_proofs)
     }
@@ -149,8 +155,8 @@ mod tests {
             let batch = 1 << log_batch;
             let all_proofs = AMT.gen_all_proofs_gpu(ri_data, batch).1;
             for (index, data) in ri_data.chunks_exact(batch).enumerate() {
-                let proof = all_proofs.get_proof(index);
-                AMT.verify_proof(&data, index, &proof, commitment).unwrap();
+                let (proof, high_commitment) = all_proofs.get_proof(index);
+                AMT.verify_proof(&data, index, &proof, high_commitment, commitment).unwrap();
             }
         }
     }

@@ -228,9 +228,9 @@ mod tests {
     use test_case::test_case;
 
     static ENCODER: Lazy<ZgEncoderParams> =
-        Lazy::new(|| EncoderParams::from_dir("../amt/pp", true, HIGH_DEPTH));
+        Lazy::new(|| EncoderParams::from_dir_mont("../amt/pp", true, HIGH_DEPTH));
     static SIGNER: Lazy<ZgSignerParams> =
-        Lazy::new(|| VerifierParams::from_dir("../amt/pp", HIGH_DEPTH));
+        Lazy::new(|| VerifierParams::from_dir_mont("../amt/pp", HIGH_DEPTH));
 
     #[test_case(0 => Ok(()); "zero sized data")]
     #[test_case(1 => Ok(()); "one sized data")]

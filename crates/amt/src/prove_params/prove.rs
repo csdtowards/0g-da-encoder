@@ -64,8 +64,13 @@ where G1<PE>: VariableBaseMSM<MulBase = G1Aff<PE>>
             .zip(scalars)
             .map(|(base, scalar)| VariableBaseMSM::msm(base, scalar).unwrap())
             .collect::<Vec<G1<PE>>>();
-        let high_commitment: G1<PE> = last_layer.into_iter().sum();
-        high_commitment
+        self.build_high_commitment(&last_layer)
+    }
+
+    pub(crate) fn build_high_commitment(
+        &self, last_layer: &[G1<PE>],
+    ) -> G1<PE> {
+        last_layer.into_iter().sum()
     }
 
     pub fn gen_prove_tree(
