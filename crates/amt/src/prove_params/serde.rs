@@ -50,6 +50,8 @@ impl<PE: Pairing> Valid for AMTParams<PE> {
         Valid::check(&self.quotients)?;
         Valid::check(&self.vanishes)?;
         Valid::check(&self.g2)?;
+        Valid::check(&self.high_basis)?;
+        Valid::check(&self.high_g2)?;
         Ok(())
     }
 
@@ -62,6 +64,8 @@ impl<PE: Pairing> Valid for AMTParams<PE> {
         Valid::batch_check(batch.iter().map(|v| &v.quotients))?;
         Valid::batch_check(batch.iter().map(|v| &v.vanishes))?;
         Valid::batch_check(batch.iter().map(|v| &v.g2))?;
+        Valid::batch_check(batch.iter().map(|v| &v.high_basis))?;
+        Valid::batch_check(batch.iter().map(|v| &v.high_g2))?;
         Ok(())
     }
 }
