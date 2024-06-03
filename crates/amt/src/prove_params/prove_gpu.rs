@@ -50,7 +50,8 @@ impl AMTParams<PE> {
         let basis = self.basis.iter();
         let high_basis = self.high_basis.iter();
 
-        let to_upload: Vec<_> = quotients.chain(basis).chain(high_basis).copied().collect();
+        let to_upload: Vec<_> =
+            quotients.chain(basis).chain(high_basis).copied().collect();
         let device_data = upload_multiexp_bases_st(&to_upload[..]).unwrap(); // TODO: multiple calls may
                                                                              // fail: ContextAlreadyInUse
         *device_mem = Some(MsmBasisOnDevice(device_data, height));
@@ -101,8 +102,7 @@ impl AMTParams<PE> {
 
         assert_eq!(lines.len(), (height + 2) * num_batches);
 
-        let (raw_proofs, last_layers) =
-            lines.split_at(height * num_batches);
+        let (raw_proofs, last_layers) = lines.split_at(height * num_batches);
         let (last_layer_comm, last_layer_ldt) =
             last_layers.split_at(num_batches);
 
@@ -156,7 +156,14 @@ mod tests {
             let all_proofs = AMT.gen_all_proofs_gpu(ri_data, batch).1;
             for (index, data) in ri_data.chunks_exact(batch).enumerate() {
                 let (proof, high_commitment) = all_proofs.get_proof(index);
-                AMT.verify_proof(&data, index, &proof, high_commitment, commitment).unwrap();
+                AMT.verify_proof(
+                    &data,
+                    index,
+                    &proof,
+                    high_commitment,
+                    commitment,
+                )
+                .unwrap();
             }
         }
     }

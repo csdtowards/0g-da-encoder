@@ -5,7 +5,7 @@ use crate::{
     merkle::{blob::EncodedBlobMerkle, Bytes32},
     raw_blob::RawBlob,
     utils::{keccak_tuple, scalar_to_h256},
-    ZgEncoderParams
+    ZgEncoderParams,
 };
 
 #[cfg(any(test, feature = "testonly_code"))]
@@ -111,9 +111,9 @@ pub fn gen_err_signer_map(index: usize) -> HashMap<ErrCode, VerifierError> {
       // ErrorSigner} amt
     err_signer_map.insert(
         ErrCode::AMT(ErrCodeAMT::WrongRow),
-        VerifierError::AMT(AmtError::IncorrectProof { 
-            coset_index: index / BLOB_ROW_N, 
-            amt_index: index % BLOB_ROW_N, 
+        VerifierError::AMT(AmtError::IncorrectProof {
+            coset_index: index / BLOB_ROW_N,
+            amt_index: index % BLOB_ROW_N,
             error: amt::AmtProofError::InconsistentCommitment,
         }),
     );
@@ -132,7 +132,7 @@ pub fn gen_err_signer_map(index: usize) -> HashMap<ErrCode, VerifierError> {
     err_signer_map.insert(
         ErrCode::AMT(ErrCodeAMT::IncorrectHighCommitment),
         VerifierError::AMT(AmtError::IncorrectProof {
-            coset_index: index / BLOB_ROW_N, 
+            coset_index: index / BLOB_ROW_N,
             amt_index: index % BLOB_ROW_N,
             error: amt::AmtProofError::FailedLowDegreeTest,
         }),
@@ -194,8 +194,6 @@ impl EncodedBlob {
 
     #[cfg(any(test, feature = "testonly_code"))]
     pub fn test_verify(&self, encoder_amt: &ZgSignerParams) {
-
-
         let authoritative_commitment = self.get_commitment();
         let authoritative_root = self.get_file_root();
 
@@ -231,16 +229,20 @@ impl EncodedBlob {
 mod tests {
     use super::EncodedBlob;
     use crate::{
-        constants::{HIGH_DEPTH, MAX_BLOB_SIZE}, encoder::error::EncoderError,
-        raw_blob::RawBlob, raw_data::RawData, ZgEncoderParams, ZgSignerParams,
+        constants::{HIGH_DEPTH, MAX_BLOB_SIZE},
+        encoder::error::EncoderError,
+        raw_blob::RawBlob,
+        raw_data::RawData,
+        ZgEncoderParams, ZgSignerParams,
     };
     use amt::{EncoderParams, VerifierParams};
     use once_cell::sync::Lazy;
     use rand::{rngs::StdRng, Rng, SeedableRng};
     use test_case::test_case;
 
-    static ENCODER: Lazy<ZgEncoderParams> =
-        Lazy::new(|| EncoderParams::from_dir_mont("../amt/pp", true, HIGH_DEPTH));
+    static ENCODER: Lazy<ZgEncoderParams> = Lazy::new(|| {
+        EncoderParams::from_dir_mont("../amt/pp", true, HIGH_DEPTH)
+    });
     static SIGNER: Lazy<ZgSignerParams> =
         Lazy::new(|| VerifierParams::from_dir_mont("../amt/pp", HIGH_DEPTH));
 

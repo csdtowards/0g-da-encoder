@@ -24,14 +24,18 @@ impl AMTParams<Bn254> {
     #[instrument(skip_all, name = "load_amt_params", level = 2, parent = None, fields(depth=expected_depth, coset=coset))]
     pub fn from_dir_mont(
         dir: impl AsRef<Path>, expected_depth: usize, create_mode: bool,
-        coset: usize,
-        expected_high_depth: usize,
+        coset: usize, expected_high_depth: usize,
     ) -> Self {
         debug!(
             depth = expected_depth,
             coset, "Load AMT params (mont format)"
         );
-        let file_name = amtp_file_name::<Bn254>(expected_depth, coset, true, expected_high_depth);
+        let file_name = amtp_file_name::<Bn254>(
+            expected_depth,
+            coset,
+            true,
+            expected_high_depth,
+        );
         let path = dir.as_ref().join(file_name);
 
         if let Ok(params) = Self::load_cached_mont(&path) {
@@ -44,8 +48,14 @@ impl AMTParams<Bn254> {
 
         info!("Fail to load AMT params (mont format)");
 
-        let params = Self::from_dir(dir, expected_depth, create_mode, coset, expected_high_depth);
-        
+        let params = Self::from_dir(
+            dir,
+            expected_depth,
+            expected_high_depth,
+            coset,
+            create_mode,
+        );
+
         let writer = File::create(&*path).unwrap();
 
         info!(file = ?path, "Save generated AMT params (mont format)");
@@ -61,18 +71,22 @@ impl AMTParams<Bn254> {
 }
 
 impl<PE: Pairing> AMTParams<PE> {
-    #[instrument(skip_all, name = "load_amt_params", level = 2, parent = None, fields(depth=expected_depth, coset=coset))]
+    #[instrument(skip_all, name = "load_amt_params", level = 2, parent = None, fields(depth=expected_depth, high_depth = expected_high_depth, coset=coset))]
     pub fn from_dir(
-        dir: impl AsRef<Path>, expected_depth: usize, create_mode: bool,
-        coset: usize,
-        expected_high_depth: usize,
+        dir: impl AsRef<Path>, expected_depth: usize,
+        expected_high_depth: usize, coset: usize, create_mode: bool,
     ) -> Self {
         debug!(
             depth = expected_depth,
             coset, "Load AMT params (unmont format)"
         );
 
-        let file_name = amtp_file_name::<PE>(expected_depth, coset, false, expected_high_depth);
+        let file_name = amtp_file_name::<PE>(
+            expected_depth,
+            coset,
+            false,
+            expected_high_depth,
+        );
         let path = dir.as_ref().join(file_name);
 
         if let Ok(params) = Self::load_cached(&path) {
@@ -87,7 +101,12 @@ impl<PE: Pairing> AMTParams<PE> {
 
         info!("Construct a new AMT params");
 
-        let pp = PowerTau::<PE>::from_dir(dir, expected_depth, create_mode, expected_high_depth);
+        let pp = PowerTau::<PE>::from_dir(
+            dir,
+            expected_depth,
+            expected_high_depth,
+            create_mode,
+        );
         let params = Self::from_pp(pp, coset);
         let buffer = File::create(&path).unwrap();
 
@@ -126,9 +145,9 @@ impl<PE: Pairing> AMTParams<PE> {
     pub fn from_pp(pp: PowerTau<PE>, coset: usize) -> Self {
         info!("Generate AMT params from powers of tau");
 
-        let (mut g1pp, mut g2pp, mut high_g1pp, mut high_g2pp)
-            = pp.into_projective();
-        
+        let (mut g1pp, mut g2pp, mut high_g1pp, mut high_g2pp) =
+            pp.into_projective();
+
         assert_eq!(high_g2pp.len(), 1);
         assert_eq!(g1pp.len(), high_g1pp.len());
         assert_eq!(g1pp.len(), g2pp.len());
@@ -171,7 +190,14 @@ impl<PE: Pairing> AMTParams<PE> {
         let high_basis: Vec<G1Aff<PE>> =
             Self::enact(Self::gen_basis(&high_g1pp[..], &fft_domain));
 
-        Self::new(basis, quotients, vanishes, g2pp[0], high_basis, high_g2pp[0])
+        Self::new(
+            basis,
+            quotients,
+            vanishes,
+            g2pp[0],
+            high_basis,
+            high_g2pp[0],
+        )
     }
 
     fn gen_basis(

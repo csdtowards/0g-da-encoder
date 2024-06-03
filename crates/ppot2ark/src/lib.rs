@@ -4,7 +4,7 @@ mod adapter;
 
 pub use adapter::Adapter;
 
-use amt::{fast_serde::write_power_tau, pp_file_name};
+use amt::{fast_serde::write_power_tau, ptau_file_name};
 pub use ark_ec::pairing::Pairing;
 pub use bellman_ce::pairing::bn256::Bn256;
 pub use powersoftau::{
@@ -13,8 +13,11 @@ pub use powersoftau::{
 };
 
 use memmap::MmapOptions;
+use std::{
+    fs::{self, read, File, OpenOptions},
+    path::Path,
+};
 use zg_encoder::constants::{BLOB_COL_LOG, BLOB_ROW_LOG, HIGH_DEPTH};
-use std::{fs::{self, read, File, OpenOptions}, path::Path};
 
 use ark_bn254::Bn254;
 type PowerTauLight = amt::PowerTauLight<Bn254>;
@@ -128,30 +131,51 @@ pub fn from_ppot_file(
 
 pub fn from_ppot_file_ldt(
     input_path: &str, input_type: InputType, file_size_pow: usize,
-    read_size_pow: usize, high_read_size_pow: usize,
-    chunk_size_pow: usize,
+    read_size_pow: usize, high_read_size_pow: usize, chunk_size_pow: usize,
 ) -> Result<PowerTau, String> {
     let amt::PowerTauLight(g1pp, g2pp) = from_ppot_file(
-        input_path, input_type, file_size_pow,
-        0, read_size_pow, chunk_size_pow,
+        input_path,
+        input_type,
+        file_size_pow,
+        0,
+        read_size_pow,
+        chunk_size_pow,
     )?;
     let high_read_from = (1 << high_read_size_pow) - (1 << read_size_pow);
     let amt::PowerTauLight(high_g1pp, high_g2pp) = from_ppot_file(
-        input_path, input_type, file_size_pow,
-        high_read_from, read_size_pow, chunk_size_pow,
+        input_path,
+        input_type,
+        file_size_pow,
+        high_read_from,
+        read_size_pow,
+        chunk_size_pow,
     )?;
-    Ok(amt::PowerTau { g1pp, g2pp, high_g1pp, high_g2: high_g2pp[0].into()})
+    Ok(amt::PowerTau {
+        g1pp,
+        g2pp,
+        high_g1pp,
+        high_g2: high_g2pp[0].into(),
+    })
 }
 
 pub fn load_save_power_tau(
     input_path: &str, input_type: InputType, file_size_pow: usize,
-    read_size_pow: usize, high_read_size_pow: usize,
-    chunk_size_pow: usize,
+    read_size_pow: usize, high_read_size_pow: usize, chunk_size_pow: usize,
     dir: impl AsRef<Path>,
 ) -> Result<(), String> {
-    let power_tau = 
-        from_ppot_file_ldt(input_path, input_type, file_size_pow, read_size_pow, high_read_size_pow, chunk_size_pow)?;
-    let path = dir.as_ref().join(pp_file_name::<Bn254>(read_size_pow, high_read_size_pow, true));
+    let power_tau = from_ppot_file_ldt(
+        input_path,
+        input_type,
+        file_size_pow,
+        read_size_pow,
+        high_read_size_pow,
+        chunk_size_pow,
+    )?;
+    let path = dir.as_ref().join(ptau_file_name::<Bn254>(
+        read_size_pow,
+        high_read_size_pow,
+        true,
+    ));
     let writer = File::create(&*path).unwrap();
     write_power_tau(&power_tau, writer).unwrap();
     Ok(())
@@ -165,9 +189,16 @@ fn main() {
     let high_read_size_pow = HIGH_DEPTH;
     let chunk_size_pow = 10;
     let dir = "../pp";
-    let pot = 
-        load_save_power_tau(&input_path, input_type, file_size_pow, read_size_pow, high_read_size_pow, chunk_size_pow, dir)
-        .unwrap();
+    let pot = load_save_power_tau(
+        &input_path,
+        input_type,
+        file_size_pow,
+        read_size_pow,
+        high_read_size_pow,
+        chunk_size_pow,
+        dir,
+    )
+    .unwrap();
 }
 
 fn crate_path() -> String {
@@ -211,9 +242,15 @@ mod tests {
         let chunk_size_pow = 10;
 
         prepare_test_file(input_type, file_size_pow);
-        let pot = 
-            from_ppot_file_ldt(&input_path, input_type, file_size_pow, read_size_pow, high_read_size_pow, chunk_size_pow)
-            .unwrap();
+        let pot = from_ppot_file_ldt(
+            &input_path,
+            input_type,
+            file_size_pow,
+            read_size_pow,
+            high_read_size_pow,
+            chunk_size_pow,
+        )
+        .unwrap();
         pot.check_ldt();
     }
 

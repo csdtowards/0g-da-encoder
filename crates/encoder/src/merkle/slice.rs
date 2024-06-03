@@ -22,8 +22,8 @@ pub struct EncodedSliceMerkle {
 
 impl EncodedSliceMerkle {
     pub(super) fn new(
-        root: [Bytes32; COSET_N], proof: Vec<Bytes32>,
-        leaf_index: usize, leaf: Bytes32,
+        root: [Bytes32; COSET_N], proof: Vec<Bytes32>, leaf_index: usize,
+        leaf: Bytes32,
     ) -> Self {
         Self {
             root,
@@ -38,7 +38,7 @@ impl EncodedSliceMerkle {
     //pub(crate) fn row(&self) -> Vec<Bytes32> { self.row.clone() }
 
     pub(crate) fn verify(
-        &self, authoritative_root: &Bytes32, row: Vec<Bytes32>
+        &self, authoritative_root: &Bytes32, row: Vec<Bytes32>,
     ) -> Result<(), MerkleError> {
         // verify authoritative_root
         if compute_file_root(&self.root) != *authoritative_root {

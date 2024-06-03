@@ -1,8 +1,6 @@
 use super::{slice::EncodedSliceMerkle, Bytes32};
 use crate::{
-    constants::{
-        BLOB_ROW_ENCODED, BLOB_ROW_LOG, COSET_N, ENCODED_BLOB_SIZE,
-    },
+    constants::{BLOB_ROW_ENCODED, BLOB_ROW_LOG, COSET_N, ENCODED_BLOB_SIZE},
     utils::keccak_chunked,
 };
 use std::collections::VecDeque;
@@ -55,12 +53,7 @@ impl EncodedBlobMerkle {
             })
             .collect();
 
-        EncodedSliceMerkle::new(
-            self.root(),
-            proof,
-            index,
-            self.row_root(index),
-        )
+        EncodedSliceMerkle::new(self.root(), proof, index, self.row_root(index))
     }
 }
 

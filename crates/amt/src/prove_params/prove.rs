@@ -173,7 +173,14 @@ mod tests {
             let all_proofs = AMT.gen_all_proofs(ri_data, batch).1;
             for (index, data) in ri_data.chunks_exact(batch).enumerate() {
                 let (proof, high_commitment) = all_proofs.get_proof(index);
-                AMT.verify_proof(&data, index, &proof, high_commitment, commitment).unwrap();
+                AMT.verify_proof(
+                    &data,
+                    index,
+                    &proof,
+                    high_commitment,
+                    commitment,
+                )
+                .unwrap();
             }
         }
     }

@@ -2,7 +2,9 @@ use crate::{
     ec_algebra::{
         BigInt, BigInteger, CanonicalDeserialize, CanonicalSerialize, Fq, Fq2,
         G1Aff, G2Aff, PrimeField, Read, Write, G2,
-    }, error::Result, AMTParams, PowerTau
+    },
+    error::Result,
+    AMTParams, PowerTau,
 };
 
 use ark_bn254::Bn254;
@@ -12,10 +14,12 @@ use rayon::prelude::*;
 use std::marker::PhantomData;
 
 const HEADER: [u8; 4] = *b"bamt";
-const HEADERPWT: [u8; 4] = *b"bpwt";
+const HEADERPWT: [u8; 4] = *b"ptau";
 type PE = Bn254;
 
-pub fn write_amt_params<W: Write>(params: &AMTParams<PE>, mut writer: W) -> Result<()> {
+pub fn write_amt_params<W: Write>(
+    params: &AMTParams<PE>, mut writer: W,
+) -> Result<()> {
     writer.write_all(&HEADER)?;
 
     let degree = ark_std::log2(params.basis.len()) as u8;
@@ -73,10 +77,14 @@ pub fn read_amt_params<R: Read>(mut reader: R) -> Result<AMTParams<PE>> {
 
     let high_basis = read_amt_g1_line(&mut reader, 1 << degree)?;
 
-    Ok(AMTParams::new(basis, quotients, vanishes, g2, high_basis, high_g2))
+    Ok(AMTParams::new(
+        basis, quotients, vanishes, g2, high_basis, high_g2,
+    ))
 }
 
-pub fn write_power_tau<W: Write>(params: &PowerTau<PE>, mut writer: W) -> Result<()> {
+pub fn write_power_tau<W: Write>(
+    params: &PowerTau<PE>, mut writer: W,
+) -> Result<()> {
     writer.write_all(&HEADERPWT)?;
 
     let degree = ark_std::log2(params.g1pp.len()) as u8;
@@ -115,7 +123,12 @@ pub fn read_power_tau<R: Read>(mut reader: R) -> Result<PowerTau<PE>> {
 
     let high_g1pp = read_amt_g1_line(&mut reader, 1 << degree)?;
 
-    Ok(PowerTau{g1pp, g2pp, high_g1pp, high_g2})
+    Ok(PowerTau {
+        g1pp,
+        g2pp,
+        high_g1pp,
+        high_g2,
+    })
 }
 
 #[inline]
@@ -193,7 +206,10 @@ fn read_amt_g2_line<R: Read>(
 
 #[cfg(test)]
 mod tests {
-    use super::{super::tests::{AMT, PP}, read_amt_params, read_power_tau, write_amt_params, write_power_tau};
+    use super::{
+        super::tests::{AMT, PP},
+        read_amt_params, read_power_tau, write_amt_params, write_power_tau,
+    };
 
     #[test]
     fn test_fast_serde() {

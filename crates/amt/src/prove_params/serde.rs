@@ -38,7 +38,9 @@ impl<PE: Pairing> CanonicalDeserialize for AMTParams<PE> {
             compress,
             validate,
         )?;
-        Ok(AMTParams::new(basis, quotients, vanishes, g2, high_basis, high_g2))
+        Ok(AMTParams::new(
+            basis, quotients, vanishes, g2, high_basis, high_g2,
+        ))
     }
 }
 

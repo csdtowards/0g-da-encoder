@@ -38,16 +38,17 @@ where AMTParams<PE>: AMTProofs<PE = PE>
         Self { amt_list }
     }
 
-    pub fn from_dir(dir: impl AsRef<Path> + Clone, create_mode: bool,
+    pub fn from_dir(
+        dir: impl AsRef<Path> + Clone, create_mode: bool,
         expected_high_depth: usize,
     ) -> Self {
         Self::from_builder(|coset| {
             AMTParams::from_dir(
                 dir.clone(),
                 LOG_COL + LOG_ROW,
-                create_mode,
-                coset,
                 expected_high_depth,
+                coset,
+                create_mode,
             )
         })
     }
@@ -183,7 +184,12 @@ where AMTParams<PE>: AMTProofs<PE = PE>
         let reversed_index = bitreverse(index, LOG_ROW);
         let (proof, high_commitment) = self.proofs.get_proof(reversed_index);
 
-        BlobRow::<PE, LOG_COL, LOG_ROW> { row, proof, high_commitment, index }
+        BlobRow::<PE, LOG_COL, LOG_ROW> {
+            row,
+            proof,
+            high_commitment,
+            index,
+        }
     }
 }
 
@@ -205,7 +211,13 @@ impl<PE: Pairing, const LOG_COL: usize, const LOG_ROW: usize>
 
         index_reverse(&mut data);
         let batch_index = bitreverse(self.index, LOG_ROW);
-        amt.verify_proof(&data, batch_index, &self.proof, self.high_commitment, commitment)
+        amt.verify_proof(
+            &data,
+            batch_index,
+            &self.proof,
+            self.high_commitment,
+            commitment,
+        )
     }
 }
 

@@ -34,8 +34,7 @@ impl EncodedSliceAMT {
     pub(crate) fn row(&self) -> Vec<Scalar> { self.row.row.clone() }
 
     pub(crate) fn verify(
-        &self, encoder_amt: &ZgSignerParams,
-        authoritative_commitment: &G1Curve,
+        &self, encoder_amt: &ZgSignerParams, authoritative_commitment: &G1Curve,
     ) -> Result<(), AmtError> {
         // verify authoritative_commitment
         if self.commitment.into_affine()

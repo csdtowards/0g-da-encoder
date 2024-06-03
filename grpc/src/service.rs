@@ -15,12 +15,16 @@ pub mod encoder {
 pub use encoder::encoder_server::EncoderServer;
 use encoder::{encoder_server::Encoder, EncodeBlobReply, EncodeBlobRequest};
 
-use amt::{ec_algebra::CanonicalSerialize, EncoderParams, PowerTau, VerifierParams};
+use amt::{
+    ec_algebra::CanonicalSerialize, EncoderParams, PowerTau, VerifierParams,
+};
 use zg_encoder::{
     constants::{
-        Scalar, BLOB_COL_LOG, BLOB_ROW_ENCODED, BLOB_ROW_LOG, COSET_N, HIGH_DEPTH, PE
+        Scalar, BLOB_COL_LOG, BLOB_ROW_ENCODED, BLOB_ROW_LOG, COSET_N,
+        HIGH_DEPTH, PE,
     },
-    EncodedBlob, EncodedSlice, EncoderError, RawBlob, RawData, ZgEncoderParams, ZgSignerParams,
+    EncodedBlob, EncodedSlice, EncoderError, RawBlob, RawData, ZgEncoderParams,
+    ZgSignerParams,
 };
 
 pub struct EncoderService {
@@ -102,7 +106,9 @@ impl SignerService {
 
 #[cfg(test)]
 impl SignerService {
-    pub fn deserialize_reply(&self, reply: EncodeBlobReply, encoded_data: &EncodedBlob) {
+    pub fn deserialize_reply(
+        &self, reply: EncodeBlobReply, encoded_data: &EncodedBlob,
+    ) {
         use amt::ec_algebra::CanonicalDeserialize;
         use zg_encoder::constants::G1Curve;
         // deserialize
@@ -145,7 +151,9 @@ fn serailize_to_bytes<T: CanonicalSerialize>(data: &T) -> Vec<u8> {
 mod tests {
     use rand::{rngs::StdRng, Rng, SeedableRng};
     use test_case::test_case;
-    use zg_encoder::{constants::MAX_BLOB_SIZE, EncoderError, RawData, RawBlob, EncodedBlob};
+    use zg_encoder::{
+        constants::MAX_BLOB_SIZE, EncodedBlob, EncoderError, RawBlob, RawData,
+    };
 
     use crate::{EncoderService, SignerService};
     #[test_case(0 => Ok(()); "zero sized data")]
@@ -170,7 +178,8 @@ mod tests {
             // ground truth
             let raw_data: RawData = data[..].try_into().unwrap();
             let raw_blob: RawBlob = raw_data.into();
-            let encoded_data = EncodedBlob::build(&raw_blob, &encoder_service.params);
+            let encoded_data =
+                EncodedBlob::build(&raw_blob, &encoder_service.params);
             // deserialize
             signer_service.deserialize_reply(reply, &encoded_data);
         }

@@ -23,30 +23,48 @@ pub struct AMTVerifyParams<PE: Pairing> {
 impl AMTVerifyParams<Bn254> {
     pub fn from_dir_mont(
         dir: impl AsRef<Path>, expected_depth: usize, verify_depth: usize,
-        coset: usize,
-        expected_high_depth: usize,
+        coset: usize, expected_high_depth: usize,
     ) -> Self {
-        Self::from_dir_inner(&dir, expected_depth, verify_depth, coset, expected_high_depth, || {
-            AMTParams::<Bn254>::from_dir_mont(
-                &dir,
-                expected_depth,
-                false,
-                coset,
-                expected_high_depth,
-            )
-        })
+        Self::from_dir_inner(
+            &dir,
+            expected_depth,
+            verify_depth,
+            coset,
+            expected_high_depth,
+            || {
+                AMTParams::<Bn254>::from_dir_mont(
+                    &dir,
+                    expected_depth,
+                    false,
+                    coset,
+                    expected_high_depth,
+                )
+            },
+        )
     }
 }
 
 impl<PE: Pairing> AMTVerifyParams<PE> {
     pub fn from_dir(
         dir: impl AsRef<Path>, expected_depth: usize, verify_depth: usize,
-        coset: usize,
-        expected_high_depth: usize,
+        coset: usize, expected_high_depth: usize,
     ) -> Self {
-        Self::from_dir_inner(&dir, expected_depth, verify_depth, coset, expected_high_depth, || {
-            AMTParams::<PE>::from_dir(&dir, expected_depth, false, coset, expected_high_depth)
-        })
+        Self::from_dir_inner(
+            &dir,
+            expected_depth,
+            verify_depth,
+            coset,
+            expected_high_depth,
+            || {
+                AMTParams::<PE>::from_dir(
+                    &dir,
+                    expected_depth,
+                    expected_high_depth,
+                    coset,
+                    false,
+                )
+            },
+        )
     }
 
     #[instrument(skip_all, name = "load_amt_verify_params", level = 2, parent = None, fields(depth=expected_depth, verify_depth, coset))]
@@ -60,8 +78,12 @@ impl<PE: Pairing> AMTVerifyParams<PE> {
             verify_depth, coset, "Load AMT verify params"
         );
 
-        let file_name =
-            amtp_verify_file_name::<PE>(expected_depth, verify_depth, coset, expected_high_depth);
+        let file_name = amtp_verify_file_name::<PE>(
+            expected_depth,
+            verify_depth,
+            coset,
+            expected_high_depth,
+        );
         let path = dir.as_ref().join(file_name);
 
         if let Ok(params) = Self::load_cached(&path) {
@@ -99,8 +121,7 @@ where G1<PE>: VariableBaseMSM<MulBase = G1Aff<PE>>
 {
     pub fn verify_proof(
         &self, ri_data: &[Fr<PE>], batch_index: usize, proof: &Proof<PE>,
-        high_commitment: G1<PE>,
-        commitment: G1<PE>,
+        high_commitment: G1<PE>, commitment: G1<PE>,
     ) -> Result<(), AmtProofError> {
         verify_amt_proof(
             &self.basis,
@@ -158,8 +179,7 @@ where
     }
     if PE::pairing(commitment, high_g2) != PE::pairing(high_commitment, g2) {
         Err(FailedLowDegreeTest)
-    } 
-    else {
+    } else {
         Ok(())
     }
 }

@@ -14,5 +14,5 @@ pub use blob::{
 pub use power_tau::{PowerTau, PowerTauLight};
 pub use proofs::AmtProofError;
 pub use prove_params::{fast_serde, AMTParams};
-pub use utils::{amtp_file_name, amtp_verify_file_name, pp_file_name};
+pub use utils::{amtp_file_name, amtp_verify_file_name, ptau_file_name};
 pub use verify_params::AMTVerifyParams;

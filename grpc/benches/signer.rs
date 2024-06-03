@@ -42,7 +42,7 @@ fn criterion_benchmark(c: &mut Criterion) {
         })
         .collect();
     let num_slice = encoded_slice.len();
-    
+
     let signer_service = SignerService::new(param_dir);
 
     let mut group = c.benchmark_group("signer");

@@ -2,7 +2,8 @@ use crate::{
     ec_algebra::{
         AffineRepr, CanonicalDeserialize, CanonicalSerialize, CurveGroup, Fr,
         G1Aff, G2Aff, Pairing, UniformRand, G1, G2,
-    }, error, fast_serde, pp_file_name
+    },
+    error, fast_serde, ptau_file_name,
 };
 use ark_bn254::Bn254;
 use ark_ff::{utils::k_adicity, Field};
@@ -19,10 +20,10 @@ pub struct PowerTauLight<PE: Pairing>(pub Vec<G1Aff<PE>>, pub Vec<G2Aff<PE>>);
 
 #[derive(CanonicalDeserialize, CanonicalSerialize, Clone)]
 pub struct PowerTau<PE: Pairing> {
-    pub g1pp: Vec<G1Aff<PE>>, 
+    pub g1pp: Vec<G1Aff<PE>>,
     pub g2pp: Vec<G2Aff<PE>>,
-    pub high_g1pp: Vec<G1Aff<PE>>, 
-    pub high_g2: G2<PE>
+    pub high_g1pp: Vec<G1Aff<PE>>,
+    pub high_g2: G2<PE>,
 }
 
 fn power_tau<'a, G: AffineRepr>(
@@ -42,7 +43,9 @@ fn power_tau<'a, G: AffineRepr>(
 
 impl<PE: Pairing> PowerTau<PE> {
     #[cfg(test)]
-    fn setup_with_tau(tau: Fr<PE>, depth: usize, high_depth: usize) -> PowerTau<PE> {
+    fn setup_with_tau(
+        tau: Fr<PE>, depth: usize, high_depth: usize,
+    ) -> PowerTau<PE> {
         Self::setup_inner(Some(tau), depth, high_depth)
     }
 
@@ -50,8 +53,14 @@ impl<PE: Pairing> PowerTau<PE> {
         Self::setup_inner(None, depth, high_depth)
     }
 
-    fn setup_inner(tau: Option<Fr<PE>>, depth: usize, high_depth: usize) -> PowerTau<PE> {
-        info!(random_tau = tau.is_none(), depth, "Setup powers of tau");
+    fn setup_inner(
+        tau: Option<Fr<PE>>, depth: usize, high_depth: usize,
+    ) -> PowerTau<PE> {
+        info!(
+            random_tau = tau.is_none(),
+            depth, high_depth, "Setup powers of tau"
+        );
+        assert!(high_depth > depth);
 
         let random_tau = Fr::<PE>::rand(&mut rand::thread_rng());
         let tau = tau.unwrap_or(random_tau);
@@ -61,15 +70,19 @@ impl<PE: Pairing> PowerTau<PE> {
 
         let g1pp: Vec<G1Aff<PE>> = power_tau(&gen1, &tau, 1 << depth);
         let g2pp: Vec<G2Aff<PE>> = power_tau(&gen2, &tau, 1 << depth);
-        
+
         let high_start = (1 << high_depth) - (1 << depth);
-        let high_gen1: G1Aff<PE> = (gen1 * tau.pow([high_start as u64])).into_affine();
+        let high_gen1: G1Aff<PE> =
+            (gen1 * tau.pow([high_start as u64])).into_affine();
         let high_g2: G2<PE> = gen2 * tau.pow([high_start as u64]);
 
         let high_g1pp: Vec<G1Aff<PE>> = power_tau(&high_gen1, &tau, 1 << depth);
 
         PowerTau {
-            g1pp, g2pp, high_g1pp, high_g2
+            g1pp,
+            g2pp,
+            high_g1pp,
+            high_g2,
         }
     }
 
@@ -80,7 +93,8 @@ impl<PE: Pairing> PowerTau<PE> {
         let pp: PowerTau<PE> =
             CanonicalDeserialize::deserialize_compressed_unchecked(buffer)?;
 
-        let (g1_len, g2_len, high_g1_len) = (pp.g1pp.len(), pp.g2pp.len(), pp.high_g1pp.len());
+        let (g1_len, g2_len, high_g1_len) =
+            (pp.g1pp.len(), pp.g2pp.len(), pp.high_g1pp.len());
         let depth = k_adicity(2, g1_len as u64) as usize;
 
         if g1_len != g2_len || g1_len != high_g1_len || expected_depth > depth {
@@ -89,19 +103,28 @@ impl<PE: Pairing> PowerTau<PE> {
             let g1pp = pp.g1pp[..1 << expected_depth].to_vec();
             let g2pp = pp.g2pp[..1 << expected_depth].to_vec();
             let high_g1pp = pp.high_g1pp[..1 << expected_depth].to_vec();
-            Ok(PowerTau{g1pp, g2pp, high_g1pp, high_g2: pp.high_g2})
+            Ok(PowerTau {
+                g1pp,
+                g2pp,
+                high_g1pp,
+                high_g2: pp.high_g2,
+            })
         } else {
             Ok(pp)
         }
     }
 
     pub fn from_dir(
-        dir: impl AsRef<Path>, expected_depth: usize, create_mode: bool,
-        expected_high_depth: usize,
+        dir: impl AsRef<Path>, expected_depth: usize,
+        expected_high_depth: usize, create_mode: bool,
     ) -> PowerTau<PE> {
         debug!("Load powers of tau");
 
-        let file = &dir.as_ref().join(pp_file_name::<PE>(expected_depth, expected_high_depth, false));
+        let file = &dir.as_ref().join(ptau_file_name::<PE>(
+            expected_depth,
+            expected_high_depth,
+            false,
+        ));
         if let Ok(loaded) = Self::from_dir_inner(file, expected_depth) {
             return loaded;
         }
@@ -123,22 +146,29 @@ impl<PE: Pairing> PowerTau<PE> {
         pp
     }
 
-    pub fn into_projective(self) -> (Vec<G1<PE>>, Vec<G2<PE>>, Vec<G1<PE>>, Vec<G2<PE>>) {
+    pub fn into_projective(
+        self,
+    ) -> (Vec<G1<PE>>, Vec<G2<PE>>, Vec<G1<PE>>, Vec<G2<PE>>) {
         let g1pp = self.g1pp.into_iter().map(G1::<PE>::from).collect();
         let g2pp = self.g2pp.into_iter().map(G2::<PE>::from).collect();
-        let high_g1pp = self.high_g1pp.into_iter().map(G1::<PE>::from).collect(); 
+        let high_g1pp =
+            self.high_g1pp.into_iter().map(G1::<PE>::from).collect();
         (g1pp, g2pp, high_g1pp, vec![self.high_g2])
     }
 }
 
 impl PowerTau<Bn254> {
     pub fn from_dir_mont(
-        dir: impl AsRef<Path>, expected_depth: usize, create_mode: bool,
-        expected_high_depth: usize,
+        dir: impl AsRef<Path>, expected_depth: usize,
+        expected_high_depth: usize, create_mode: bool,
     ) -> Self {
         debug!("Load powers of tau (mont format)");
 
-        let path = dir.as_ref().join(pp_file_name::<Bn254>(expected_depth, expected_high_depth, true));
+        let path = dir.as_ref().join(ptau_file_name::<Bn254>(
+            expected_depth,
+            expected_high_depth,
+            true,
+        ));
         if let Ok(loaded) = Self::load_cached_mont(&path) {
             return loaded;
         }
@@ -152,7 +182,12 @@ impl PowerTau<Bn254> {
             );
         }
 
-        let pp = Self::from_dir(dir, expected_depth, create_mode, expected_high_depth);
+        let pp = Self::from_dir(
+            dir,
+            expected_depth,
+            expected_high_depth,
+            create_mode,
+        );
         let writer = File::create(&*path).unwrap();
 
         info!(file = ?path, "Save generated AMT params (mont format)");
@@ -169,7 +204,7 @@ impl PowerTau<Bn254> {
 
 impl<PE: Pairing> PartialEq for PowerTau<PE> {
     fn eq(&self, other: &Self) -> bool {
-        self.g1pp == other.g1pp 
+        self.g1pp == other.g1pp
             && self.g2pp == other.g2pp
             && self.high_g1pp == other.high_g1pp
             && self.high_g2 == other.high_g2
@@ -181,11 +216,16 @@ impl<PE: Pairing> PowerTau<PE> {
         assert_eq!(self.g1pp.len(), self.g2pp.len());
         assert_eq!(self.g1pp.len(), self.high_g1pp.len());
         let g2: G2<PE> = self.g2pp[0].into();
-        let _ = self.g1pp.iter()
-            .zip(self.high_g1pp.iter())
-            .map(|(g1, high_g1)| 
-                assert_eq!(PE::pairing(g1, self.high_g2), PE::pairing(high_g1, g2))
-            );
+        let _ =
+            self.g1pp
+                .iter()
+                .zip(self.high_g1pp.iter())
+                .map(|(g1, high_g1)| {
+                    assert_eq!(
+                        PE::pairing(g1, self.high_g2),
+                        PE::pairing(high_g1, g2)
+                    )
+                });
     }
 }
 
