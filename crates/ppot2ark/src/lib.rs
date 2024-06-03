@@ -19,8 +19,8 @@ use std::{
 };
 use zg_encoder::constants::{BLOB_COL_LOG, BLOB_ROW_LOG, HIGH_DEPTH};
 
-use ark_bn254::Bn254;
-type PowerTauLight = amt::PowerTauLight<Bn254>;
+use ark_bn254::{Bn254, G1Affine, G2Affine};
+pub struct PowerTauLight(pub Vec<G1Affine>, pub Vec<G2Affine>);
 type PowerTau = amt::PowerTau<Bn254>;
 use project_root;
 
@@ -110,7 +110,7 @@ fn from_ppot_file_inner<'a>(
         remaining_size -= current_chunk_size;
     }
 
-    Ok(amt::PowerTauLight(g1, g2))
+    Ok(PowerTauLight(g1, g2))
 }
 
 pub fn from_ppot_file(
@@ -133,7 +133,7 @@ pub fn from_ppot_file_ldt(
     input_path: &str, input_type: InputType, file_size_pow: usize,
     read_size_pow: usize, high_read_size_pow: usize, chunk_size_pow: usize,
 ) -> Result<PowerTau, String> {
-    let amt::PowerTauLight(g1pp, g2pp) = from_ppot_file(
+    let PowerTauLight(g1pp, g2pp) = from_ppot_file(
         input_path,
         input_type,
         file_size_pow,
@@ -142,7 +142,7 @@ pub fn from_ppot_file_ldt(
         chunk_size_pow,
     )?;
     let high_read_from = (1 << high_read_size_pow) - (1 << read_size_pow);
-    let amt::PowerTauLight(high_g1pp, high_g2pp) = from_ppot_file(
+    let PowerTauLight(high_g1pp, high_g2pp) = from_ppot_file(
         input_path,
         input_type,
         file_size_pow,

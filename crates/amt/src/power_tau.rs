@@ -16,8 +16,6 @@ use std::{
 };
 use tracing::{debug, info};
 
-pub struct PowerTauLight<PE: Pairing>(pub Vec<G1Aff<PE>>, pub Vec<G2Aff<PE>>);
-
 #[derive(CanonicalDeserialize, CanonicalSerialize, Clone)]
 pub struct PowerTau<PE: Pairing> {
     pub g1pp: Vec<G1Aff<PE>>,
