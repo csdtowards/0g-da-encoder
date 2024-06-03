@@ -23,21 +23,19 @@ pub struct AMTVerifyParams<PE: Pairing> {
 impl AMTVerifyParams<Bn254> {
     pub fn from_dir_mont(
         dir: impl AsRef<Path>, expected_depth: usize, verify_depth: usize,
-        coset: usize, expected_high_depth: usize,
+        coset: usize,
     ) -> Self {
         Self::from_dir_inner(
             &dir,
             expected_depth,
             verify_depth,
             coset,
-            expected_high_depth,
             || {
                 AMTParams::<Bn254>::from_dir_mont(
                     &dir,
                     expected_depth,
                     false,
                     coset,
-                    expected_high_depth,
                 )
             },
         )
@@ -47,19 +45,17 @@ impl AMTVerifyParams<Bn254> {
 impl<PE: Pairing> AMTVerifyParams<PE> {
     pub fn from_dir(
         dir: impl AsRef<Path>, expected_depth: usize, verify_depth: usize,
-        coset: usize, expected_high_depth: usize,
+        coset: usize,
     ) -> Self {
         Self::from_dir_inner(
             &dir,
             expected_depth,
             verify_depth,
             coset,
-            expected_high_depth,
             || {
                 AMTParams::<PE>::from_dir(
                     &dir,
                     expected_depth,
-                    expected_high_depth,
                     coset,
                     false,
                 )
@@ -70,7 +66,7 @@ impl<PE: Pairing> AMTVerifyParams<PE> {
     #[instrument(skip_all, name = "load_amt_verify_params", level = 2, parent = None, fields(depth=expected_depth, verify_depth, coset))]
     fn from_dir_inner(
         dir: impl AsRef<Path>, expected_depth: usize, verify_depth: usize,
-        coset: usize, expected_high_depth: usize,
+        coset: usize,
         make_prover_params: impl Fn() -> AMTParams<PE>,
     ) -> Self {
         debug!(
@@ -82,7 +78,6 @@ impl<PE: Pairing> AMTVerifyParams<PE> {
             expected_depth,
             verify_depth,
             coset,
-            expected_high_depth,
         );
         let path = dir.as_ref().join(file_name);
 

@@ -20,8 +20,7 @@ use amt::{
 };
 use zg_encoder::{
     constants::{
-        Scalar, BLOB_COL_LOG, BLOB_ROW_ENCODED, BLOB_ROW_LOG, COSET_N,
-        HIGH_DEPTH, PE,
+        Scalar, BLOB_COL_LOG, BLOB_ROW_ENCODED, BLOB_ROW_LOG, COSET_N, PE,
     },
     EncodedBlob, EncodedSlice, EncoderError, RawBlob, RawData, ZgEncoderParams,
     ZgSignerParams,
@@ -33,7 +32,7 @@ pub struct EncoderService {
 
 impl EncoderService {
     pub fn new(param_dir: &str) -> Self {
-        let params = EncoderParams::from_dir_mont(param_dir, true, HIGH_DEPTH);
+        let params = EncoderParams::from_dir_mont(param_dir, true);
         Self { params }
     }
 }
@@ -99,7 +98,7 @@ pub struct SignerService {
 
 impl SignerService {
     pub fn new(param_dir: &str) -> Self {
-        let params = VerifierParams::from_dir_mont(param_dir, HIGH_DEPTH);
+        let params = VerifierParams::from_dir_mont(param_dir);
         Self { params }
     }
 }
@@ -156,6 +155,16 @@ mod tests {
     };
 
     use crate::{EncoderService, SignerService};
+
+    use once_cell::sync::Lazy;
+    const PARAM_DIR: &str = "../pp";
+    static ENCODER_SERVICE: Lazy<EncoderService> = Lazy::new(|| {
+        EncoderService::new(PARAM_DIR)
+    });
+    static SIGNER_SERVICE: Lazy<SignerService> = Lazy::new(|| {
+        SignerService::new(PARAM_DIR)
+    });
+
     #[test_case(0 => Ok(()); "zero sized data")]
     #[test_case(1 => Ok(()); "one sized data")]
     #[test_case(1234 => Ok(()); "normal sized data")]
@@ -165,23 +174,19 @@ mod tests {
         let seed = 22u64;
         let mut rng = StdRng::seed_from_u64(seed);
 
-        let param_dir = "../pp";
-        let encoder_service = EncoderService::new(param_dir);
-        let signer_service = SignerService::new(param_dir);
-
         for _ in 0..3 {
             // generate input
             let mut data = vec![0u8; num_bytes];
             rng.fill(&mut data[..]);
             // serialize
-            let reply = encoder_service.process_data(&data)?;
+            let reply = ENCODER_SERVICE.process_data(&data)?;
             // ground truth
             let raw_data: RawData = data[..].try_into().unwrap();
             let raw_blob: RawBlob = raw_data.into();
             let encoded_data =
-                EncodedBlob::build(&raw_blob, &encoder_service.params);
+                EncodedBlob::build(&raw_blob, &ENCODER_SERVICE.params);
             // deserialize
-            signer_service.deserialize_reply(reply, &encoded_data);
+            SIGNER_SERVICE.deserialize_reply(reply, &encoded_data);
         }
         Ok(())
     }

@@ -1216,6 +1216,7 @@ dependencies = [
  "clap 3.2.25",
  "config 0.14.0",
  "criterion",
+ "once_cell",
  "prost",
  "rand 0.8.5",
  "rayon",

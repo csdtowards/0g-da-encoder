@@ -17,7 +17,7 @@ use std::{
     fs::{self, read, File, OpenOptions},
     path::Path,
 };
-use zg_encoder::constants::{BLOB_COL_LOG, BLOB_ROW_LOG, HIGH_DEPTH};
+use zg_encoder::constants::{BLOB_COL_LOG, BLOB_ROW_LOG};
 
 use ark_bn254::{Bn254, G1Affine, G2Affine};
 pub struct PowerTauLight(pub Vec<G1Affine>, pub Vec<G2Affine>);
@@ -173,7 +173,6 @@ pub fn load_save_power_tau(
     )?;
     let path = dir.as_ref().join(ptau_file_name::<Bn254>(
         read_size_pow,
-        high_read_size_pow,
         true,
     ));
     let writer = File::create(&*path).unwrap();
@@ -186,7 +185,7 @@ fn main() {
     let input_type = InputType::Challenge;
     let file_size_pow = 12;
     let read_size_pow = BLOB_COL_LOG + BLOB_ROW_LOG;
-    let high_read_size_pow = HIGH_DEPTH;
+    let high_read_size_pow = 28;
     let chunk_size_pow = 10;
     let dir = "../pp";
     let pot = load_save_power_tau(

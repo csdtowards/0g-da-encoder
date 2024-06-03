@@ -229,7 +229,7 @@ impl EncodedBlob {
 mod tests {
     use super::EncodedBlob;
     use crate::{
-        constants::{HIGH_DEPTH, MAX_BLOB_SIZE},
+        constants::MAX_BLOB_SIZE,
         encoder::error::EncoderError,
         raw_blob::RawBlob,
         raw_data::RawData,
@@ -241,10 +241,10 @@ mod tests {
     use test_case::test_case;
 
     static ENCODER: Lazy<ZgEncoderParams> = Lazy::new(|| {
-        EncoderParams::from_dir_mont("../amt/pp", true, HIGH_DEPTH)
+        EncoderParams::from_dir_mont("../amt/pp", true)
     });
     static SIGNER: Lazy<ZgSignerParams> =
-        Lazy::new(|| VerifierParams::from_dir_mont("../amt/pp", HIGH_DEPTH));
+        Lazy::new(|| VerifierParams::from_dir_mont("../amt/pp"));
 
     #[test_case(0 => Ok(()); "zero sized data")]
     #[test_case(1 => Ok(()); "one sized data")]

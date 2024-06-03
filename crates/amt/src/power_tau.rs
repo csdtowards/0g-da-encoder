@@ -42,23 +42,23 @@ fn power_tau<'a, G: AffineRepr>(
 impl<PE: Pairing> PowerTau<PE> {
     #[cfg(test)]
     fn setup_with_tau(
-        tau: Fr<PE>, depth: usize, high_depth: usize,
+        tau: Fr<PE>, depth: usize,
     ) -> PowerTau<PE> {
-        Self::setup_inner(Some(tau), depth, high_depth)
+        Self::setup_inner(Some(tau), depth)
     }
 
-    pub fn setup(depth: usize, high_depth: usize) -> PowerTau<PE> {
-        Self::setup_inner(None, depth, high_depth)
+    pub fn setup(depth: usize) -> PowerTau<PE> {
+        Self::setup_inner(None, depth)
     }
 
     fn setup_inner(
-        tau: Option<Fr<PE>>, depth: usize, high_depth: usize,
+        tau: Option<Fr<PE>>, depth: usize,
     ) -> PowerTau<PE> {
         info!(
             random_tau = tau.is_none(),
-            depth, high_depth, "Setup powers of tau"
+            depth, "Setup powers of tau"
         );
-        assert!(high_depth > depth);
+        let high_depth = depth + 2;
 
         let random_tau = Fr::<PE>::rand(&mut rand::thread_rng());
         let tau = tau.unwrap_or(random_tau);
@@ -114,13 +114,12 @@ impl<PE: Pairing> PowerTau<PE> {
 
     pub fn from_dir(
         dir: impl AsRef<Path>, expected_depth: usize,
-        expected_high_depth: usize, create_mode: bool,
+        create_mode: bool,
     ) -> PowerTau<PE> {
         debug!("Load powers of tau");
 
         let file = &dir.as_ref().join(ptau_file_name::<PE>(
             expected_depth,
-            expected_high_depth,
             false,
         ));
         if let Ok(loaded) = Self::from_dir_inner(file, expected_depth) {
@@ -136,7 +135,7 @@ impl<PE: Pairing> PowerTau<PE> {
             );
         }
 
-        let pp = Self::setup(expected_depth, expected_high_depth);
+        let pp = Self::setup(expected_depth);
         create_dir_all(Path::new(file).parent().unwrap()).unwrap();
         let buffer = File::create(file).unwrap();
         info!(?file, "Save generated powers of tau");
@@ -158,13 +157,12 @@ impl<PE: Pairing> PowerTau<PE> {
 impl PowerTau<Bn254> {
     pub fn from_dir_mont(
         dir: impl AsRef<Path>, expected_depth: usize,
-        expected_high_depth: usize, create_mode: bool,
+        create_mode: bool,
     ) -> Self {
         debug!("Load powers of tau (mont format)");
 
         let path = dir.as_ref().join(ptau_file_name::<Bn254>(
             expected_depth,
-            expected_high_depth,
             true,
         ));
         if let Ok(loaded) = Self::load_cached_mont(&path) {
@@ -183,7 +181,6 @@ impl PowerTau<Bn254> {
         let pp = Self::from_dir(
             dir,
             expected_depth,
-            expected_high_depth,
             create_mode,
         );
         let writer = File::create(&*path).unwrap();
@@ -232,8 +229,8 @@ fn test_partial_load() {
     type PE = ark_bn254::Bn254;
 
     let tau = Fr::<PE>::rand(&mut rand::thread_rng());
-    let large_pp = PowerTau::<PE>::setup_with_tau(tau, 8, 10);
-    let small_pp = PowerTau::<PE>::setup_with_tau(tau, 4, 7);
+    let large_pp = PowerTau::<PE>::setup_with_tau(tau, 8);
+    let small_pp = PowerTau::<PE>::setup_with_tau(tau, 4);
 
     assert_eq!(small_pp.g1pp[..], large_pp.g1pp[..(small_pp.g1pp.len())]);
     assert_eq!(small_pp.g2pp[..], large_pp.g2pp[..(small_pp.g2pp.len())]);

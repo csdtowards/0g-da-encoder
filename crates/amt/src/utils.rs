@@ -22,34 +22,32 @@ fn file_name<PE: Pairing>(prefix: &str, depth: usize) -> String {
 }
 
 pub fn ptau_file_name<PE: Pairing>(
-    depth: usize, high_depth: usize, mont: bool,
+    depth: usize, mont: bool,
 ) -> String {
     let prefix = format!(
-        "power-tau-full{}{}",
-        high_depth,
+        "power-tau-full{}",
         if mont { "-mont" } else { "" }
     );
     file_name::<PE>(&prefix, depth)
 }
 
 pub fn amtp_file_name<PE: Pairing>(
-    depth: usize, coset: usize, mont: bool, high_depth: usize,
+    depth: usize, coset: usize, mont: bool,
 ) -> String {
     let prefix = format!(
-        "amt-params-coset{}-high{}{}",
+        "amt-params-coset{}{}",
         coset,
-        high_depth,
         if mont { "-mont" } else { "" }
     );
     file_name::<PE>(&prefix, depth)
 }
 
 pub fn amtp_verify_file_name<PE: Pairing>(
-    depth: usize, verify_depth: usize, coset: usize, high_depth: usize,
+    depth: usize, verify_depth: usize, coset: usize,
 ) -> String {
     let prefix = format!(
-        "amt-params-verify{}-coset{}-high{}",
-        verify_depth, coset, high_depth
+        "amt-params-verify{}-coset{}",
+        verify_depth, coset
     );
     file_name::<PE>(&prefix, depth)
 }
