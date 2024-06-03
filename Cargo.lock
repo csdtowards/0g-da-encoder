@@ -1997,6 +1997,7 @@ name = "ppot2ark"
 version = "0.1.0"
 dependencies = [
  "amt",
+ "anyhow",
  "ark-bn254",
  "ark-ec",
  "ark-ff",
@@ -2006,6 +2007,8 @@ dependencies = [
  "memmap",
  "powersoftau",
  "project-root",
+ "tracing",
+ "tracing-subscriber",
  "zg-encoder",
 ]
 

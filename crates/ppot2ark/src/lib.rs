@@ -188,7 +188,7 @@ fn main() {
     let high_read_size_pow = 28;
     let chunk_size_pow = 10;
     let dir = "../pp";
-    let pot = load_save_power_tau(
+    load_save_power_tau(
         &input_path,
         input_type,
         file_size_pow,

@@ -21,3 +21,12 @@ amt = { workspace = true }
 zg-encoder = {workspace = true}
 
 project-root = "0.2"
+
+anyhow = "1"
+tracing = "0.1.40"
+tracing-subscriber = { workspace = true }
+
+[[bin]]
+name = "build_params"
+test = false
+bench = false

@@ -6,7 +6,7 @@ use tracing_subscriber::fmt::format::FmtSpan;
 fn parse_param() -> Result<(usize, usize, usize)> {
     let args: Vec<String> = std::env::args().collect();
 
-    if args.len() < 4 {
+    if args.len() < 3 {
         bail!(
             "Usage: {} <amt-depth> <verify-depth> <coset-index>",
             args[0]
