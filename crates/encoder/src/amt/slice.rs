@@ -6,19 +6,25 @@ use crate::{
     },
     ZgSignerParams,
 };
-use amt::BlobRow;
+use amt::{BlobRow, Proof};
 use ark_ec::CurveGroup;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 
-#[derive(Debug, CanonicalSerialize, CanonicalDeserialize, PartialEq)]
+#[derive(Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct EncodedSliceAMT {
     index: usize, /* index: 0, 1, ..., BLOB_ROW_ENCODED - 1 */
     commitment: G1Curve,
     row: BlobRow<PE, BLOB_COL_LOG, BLOB_ROW_LOG>, // index in half, row, proof
 }
 
+impl PartialEq for EncodedSliceAMT {
+    fn eq(&self, other: &Self) -> bool {
+        self.index == other.index && self.commitment == other.commitment && self.row == other.row
+    }
+}
+
 impl EncodedSliceAMT {
-    pub(super) fn new(
+    pub(crate) fn new(
         index: usize, commitment: G1Curve,
         row: BlobRow<PE, BLOB_COL_LOG, BLOB_ROW_LOG>,
     ) -> Self {
@@ -30,6 +36,10 @@ impl EncodedSliceAMT {
     }
 
     pub(crate) fn index(&self) -> usize { self.index }
+
+    pub(crate) fn fields(&self) -> (G1Curve, Proof<PE>, G1Curve) {
+        (self.commitment, self.row.proof.clone(), self.row.high_commitment)
+    }
 
     pub(crate) fn row(&self) -> Vec<Scalar> { self.row.row.clone() }
 

@@ -30,8 +30,14 @@ impl<PE: Pairing> AllProofs<PE> {
     }
 }
 
-#[derive(Debug, CanonicalSerialize, CanonicalDeserialize, PartialEq)]
+#[derive(Debug, CanonicalSerialize, CanonicalDeserialize, Clone)]
 pub struct Proof<PE: Pairing>(Vec<(G1Aff<PE>, G1Aff<PE>)>);
+
+impl<PE: Pairing> PartialEq for Proof<PE> {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+}
 
 impl<PE: Pairing> Deref for Proof<PE> {
     type Target = Vec<(G1Aff<PE>, G1Aff<PE>)>;

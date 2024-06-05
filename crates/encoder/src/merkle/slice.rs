@@ -9,7 +9,7 @@ use crate::{
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use keccak_hash::keccak;
 
-#[derive(Debug, CanonicalSerialize, CanonicalDeserialize, PartialEq)]
+#[derive(Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct EncodedSliceMerkle {
     // index: 0, 1, ...,
     // BLOB_ROW_ENCODED
@@ -20,8 +20,14 @@ pub struct EncodedSliceMerkle {
     leaf: Bytes32,
 }
 
+impl PartialEq for EncodedSliceMerkle {
+    fn eq(&self, other: &Self) -> bool {
+        self.root == other.root && self.proof == other.proof && self.leaf_index == other.leaf_index && self.leaf == other.leaf
+    }
+}
+
 impl EncodedSliceMerkle {
-    pub(super) fn new(
+    pub(crate) fn new(
         root: [Bytes32; COSET_N], proof: Vec<Bytes32>, leaf_index: usize,
         leaf: Bytes32,
     ) -> Self {
@@ -35,7 +41,9 @@ impl EncodedSliceMerkle {
 
     pub(crate) fn index(&self) -> usize { self.leaf_index }
 
-    //pub(crate) fn row(&self) -> Vec<Bytes32> { self.row.clone() }
+    pub(crate) fn fields(&self) -> ([Bytes32; COSET_N], Vec<Bytes32>, Bytes32) {
+        (self.root, self.proof.clone(), self.leaf)
+    }
 
     pub(crate) fn verify(
         &self, authoritative_root: &Bytes32, row: Vec<Bytes32>,

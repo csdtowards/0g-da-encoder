@@ -189,12 +189,18 @@ where AMTParams<PE>: AMTProofs<PE = PE>
     }
 }
 
-#[derive(Debug, CanonicalSerialize, CanonicalDeserialize, PartialEq)]
+#[derive(Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct BlobRow<PE: Pairing, const LOG_COL: usize, const LOG_ROW: usize> {
     pub index: usize,
     pub row: Vec<Fr<PE>>,
     pub proof: Proof<PE>,
     pub high_commitment: G1<PE>,
+}
+
+impl<PE: Pairing, const LOG_COL: usize, const LOG_ROW: usize> PartialEq for BlobRow<PE, LOG_COL, LOG_ROW> {
+    fn eq(&self, other: &Self) -> bool {
+        self.index == other.index && self.row == other.row && self.proof == other.proof && self.high_commitment == other.high_commitment
+    }
 }
 
 impl<PE: Pairing, const LOG_COL: usize, const LOG_ROW: usize>

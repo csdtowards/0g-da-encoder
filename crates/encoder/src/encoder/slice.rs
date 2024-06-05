@@ -1,15 +1,22 @@
-use super::error::VerifierError;
+use super::{error::VerifierError, light_slice::LightEncodedSlice};
 use crate::{
-    amt::slice::EncodedSliceAMT, constants::G1Curve,
-    merkle::slice::EncodedSliceMerkle, utils::scalar_to_h256, ZgSignerParams,
+    amt::slice::EncodedSliceAMT, constants::{G1Curve, Scalar, COSET_N, PE},
+    merkle::{slice::EncodedSliceMerkle, Bytes32}, utils::scalar_to_h256, ZgSignerParams,
 };
+use amt::Proof;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 
-#[derive(Debug, CanonicalSerialize, CanonicalDeserialize, PartialEq)]
+#[derive(Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct EncodedSlice {
     pub index: usize,
     amt: EncodedSliceAMT,
     merkle: EncodedSliceMerkle,
+}
+
+impl PartialEq for EncodedSlice {
+    fn eq(&self, other: &Self) -> bool {
+        self.index == other.index && self.amt == other.amt && self.merkle == other.merkle
+    }
 }
 
 impl EncodedSlice {
@@ -19,24 +26,46 @@ impl EncodedSlice {
         Self { index, amt, merkle }
     }
 
-    pub fn verify(
-        &self, encoder_amt: &ZgSignerParams,
-        authoritative_commitment: &G1Curve, authoritative_root: &[u8; 32],
-    ) -> Result<(), VerifierError> {
-        // consistency between amt and merkle
-        // index consistency
-        if self.index != self.amt.index() {
-            return Err(VerifierError::UnmatchedAMTIndex {
-                row_index: self.index,
-                amt_index: self.amt.index(),
-            });
-        }
+    pub(crate) fn check_merkle_idx(&self) -> Result<(), VerifierError> {
         if self.index != self.merkle.index() {
             return Err(VerifierError::UnmatchedMerkleIndex {
                 row_index: self.index,
                 merkle_index: self.merkle.index(),
             });
         }
+        else {
+            return Ok(())
+        }
+    }
+
+    pub(crate) fn merkle_fields(&self) -> ([Bytes32; COSET_N], Vec<Bytes32>, Bytes32) {
+        self.merkle.fields()
+    }
+
+    pub(crate) fn amt_fields(&self) -> (G1Curve, Proof<PE>, G1Curve) {
+        self.amt.fields()
+    }
+
+    pub(crate) fn check_amt_idx(&self) -> Result<(), VerifierError> {
+        if self.index != self.amt.index() {
+            return Err(VerifierError::UnmatchedAMTIndex {
+                row_index: self.index,
+                amt_index: self.amt.index(),
+            });
+        }
+        else {
+            return Ok(())
+        }
+    }
+
+    pub fn verify(
+        &self, encoder_amt: &ZgSignerParams,
+        authoritative_commitment: &G1Curve, authoritative_root: &[u8; 32],
+    ) -> Result<(), VerifierError> {
+        // consistency between amt and merkle
+        // index consistency
+        self.check_amt_idx()?;
+        self.check_merkle_idx()?;
         // derive row_merkle from row_amt
         let row_amt = self.amt.row();
         let row_merkle: Vec<_> =
@@ -45,5 +74,14 @@ impl EncodedSlice {
         self.amt.verify(encoder_amt, authoritative_commitment)?;
         self.merkle.verify(authoritative_root, row_merkle)?;
         Ok(())
+    }
+}
+
+impl EncodedSlice {
+    pub(crate) fn row(&self) -> Vec<Scalar> {
+        self.amt.row()
+    }
+    pub(crate) fn into_light_slice(&self) -> LightEncodedSlice {
+        LightEncodedSlice::from_slice(self)
     }
 }

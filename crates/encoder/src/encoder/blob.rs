@@ -229,11 +229,7 @@ impl EncodedBlob {
 mod tests {
     use super::EncodedBlob;
     use crate::{
-        constants::MAX_BLOB_SIZE,
-        encoder::error::EncoderError,
-        raw_blob::RawBlob,
-        raw_data::RawData,
-        ZgEncoderParams, ZgSignerParams,
+        constants::{BLOB_ROW_ENCODED, MAX_BLOB_SIZE}, encoder::error::EncoderError, raw_blob::RawBlob, raw_data::RawData, ZgEncoderParams, ZgSignerParams
     };
     use amt::{EncoderParams, VerifierParams};
     use once_cell::sync::Lazy;
@@ -246,23 +242,41 @@ mod tests {
     static SIGNER: Lazy<ZgSignerParams> =
         Lazy::new(|| VerifierParams::from_dir_mont("../amt/pp"));
 
+    fn gen_encoded_blob(num_bytes: usize) -> Result<EncodedBlob, EncoderError> {
+        // generate input
+        let seed = 222u64;
+        let mut rng = StdRng::seed_from_u64(seed);
+        let mut data = vec![0u8; num_bytes];
+        rng.fill(&mut data[..]);
+        // batcher
+        let raw_data: RawData = data[..].try_into()?;
+        let raw_blob: RawBlob = raw_data.try_into().unwrap();
+        let encoded_blob = EncodedBlob::build(&raw_blob, &ENCODER);
+        Ok(encoded_blob)
+    }
+
+    #[test]
+    fn test_light_slice() -> () {
+        let num_bytes = 1234;
+        let encoded_blob = gen_encoded_blob(num_bytes).unwrap();
+        
+        for index in 0..BLOB_ROW_ENCODED {
+            let encoded_slice = encoded_blob.get_row(index);
+            let row = encoded_slice.row();
+            let light_slice = encoded_slice.into_light_slice();
+            let encoded_slice_recovered = light_slice.into_slice(row);
+            assert_eq!(encoded_slice, encoded_slice_recovered);
+        }
+    }
+
     #[test_case(0 => Ok(()); "zero sized data")]
     #[test_case(1 => Ok(()); "one sized data")]
     #[test_case(1234 => Ok(()); "normal sized data")]
     #[test_case(MAX_BLOB_SIZE => Ok(()); "exact sized data")]
     #[test_case(MAX_BLOB_SIZE + 1 => Err(EncoderError::TooLargeBlob { actual: MAX_BLOB_SIZE + 1, expected_max: MAX_BLOB_SIZE }); "overflow sized data")]
     fn test_batcher_and_verify(num_bytes: usize) -> Result<(), EncoderError> {
-        // generate input
-        let seed = 222u64;
-        let mut rng = StdRng::seed_from_u64(seed);
-        let mut data = vec![0u8; num_bytes];
-        rng.fill(&mut data[..]);
-
-        // batcher
-        let raw_data: RawData = data[..].try_into()?;
-        let raw_blob: RawBlob = raw_data.try_into().unwrap();
-        let encoded_blob = EncodedBlob::build(&raw_blob, &ENCODER);
-
+        let encoded_blob = gen_encoded_blob(num_bytes)?;
+        
         encoded_blob.test_verify(&SIGNER);
 
         Ok(())
