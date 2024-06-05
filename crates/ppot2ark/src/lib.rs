@@ -171,10 +171,9 @@ pub fn load_save_power_tau(
         high_read_size_pow,
         chunk_size_pow,
     )?;
-    let path = dir.as_ref().join(ptau_file_name::<Bn254>(
-        read_size_pow,
-        true,
-    ));
+    let path = dir
+        .as_ref()
+        .join(ptau_file_name::<Bn254>(read_size_pow, true));
     let writer = File::create(&*path).unwrap();
     write_power_tau(&power_tau, writer).unwrap();
     Ok(())
@@ -212,7 +211,9 @@ mod tests {
 
     use super::*;
 
-    fn data_path() -> String { format!("{}/data", crate_path()) }
+    fn data_path() -> String {
+        format!("{}/data", crate_path())
+    }
 
     fn prepare_test_file(ty: InputType, degree: usize) {
         let target_file = format!("{}/{}", data_path(), ty.file_name(degree));

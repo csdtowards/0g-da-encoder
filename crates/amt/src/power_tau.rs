@@ -41,9 +41,7 @@ fn power_tau<'a, G: AffineRepr>(
 
 impl<PE: Pairing> PowerTau<PE> {
     #[cfg(test)]
-    fn setup_with_tau(
-        tau: Fr<PE>, depth: usize,
-    ) -> PowerTau<PE> {
+    fn setup_with_tau(tau: Fr<PE>, depth: usize) -> PowerTau<PE> {
         Self::setup_inner(Some(tau), depth)
     }
 
@@ -51,13 +49,8 @@ impl<PE: Pairing> PowerTau<PE> {
         Self::setup_inner(None, depth)
     }
 
-    fn setup_inner(
-        tau: Option<Fr<PE>>, depth: usize,
-    ) -> PowerTau<PE> {
-        info!(
-            random_tau = tau.is_none(),
-            depth, "Setup powers of tau"
-        );
+    fn setup_inner(tau: Option<Fr<PE>>, depth: usize) -> PowerTau<PE> {
+        info!(random_tau = tau.is_none(), depth, "Setup powers of tau");
         let high_depth = depth + 2;
 
         let random_tau = Fr::<PE>::rand(&mut rand::thread_rng());
@@ -113,15 +106,13 @@ impl<PE: Pairing> PowerTau<PE> {
     }
 
     pub fn from_dir(
-        dir: impl AsRef<Path>, expected_depth: usize,
-        create_mode: bool,
+        dir: impl AsRef<Path>, expected_depth: usize, create_mode: bool,
     ) -> PowerTau<PE> {
         debug!("Load powers of tau");
 
-        let file = &dir.as_ref().join(ptau_file_name::<PE>(
-            expected_depth,
-            false,
-        ));
+        let file = &dir
+            .as_ref()
+            .join(ptau_file_name::<PE>(expected_depth, false));
         if let Ok(loaded) = Self::from_dir_inner(file, expected_depth) {
             return loaded;
         }
@@ -156,15 +147,13 @@ impl<PE: Pairing> PowerTau<PE> {
 
 impl PowerTau<Bn254> {
     pub fn from_dir_mont(
-        dir: impl AsRef<Path>, expected_depth: usize,
-        create_mode: bool,
+        dir: impl AsRef<Path>, expected_depth: usize, create_mode: bool,
     ) -> Self {
         debug!("Load powers of tau (mont format)");
 
-        let path = dir.as_ref().join(ptau_file_name::<Bn254>(
-            expected_depth,
-            true,
-        ));
+        let path = dir
+            .as_ref()
+            .join(ptau_file_name::<Bn254>(expected_depth, true));
         if let Ok(loaded) = Self::load_cached_mont(&path) {
             return loaded;
         }
@@ -178,11 +167,7 @@ impl PowerTau<Bn254> {
             );
         }
 
-        let pp = Self::from_dir(
-            dir,
-            expected_depth,
-            create_mode,
-        );
+        let pp = Self::from_dir(dir, expected_depth, create_mode);
         let writer = File::create(&*path).unwrap();
 
         info!(file = ?path, "Save generated AMT params (mont format)");

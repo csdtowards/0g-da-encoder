@@ -31,16 +31,15 @@ impl<
         const LOG_COL: usize,
         const LOG_ROW: usize,
     > EncoderParams<PE, COSET_N, LOG_COL, LOG_ROW>
-where AMTParams<PE>: AMTProofs<PE = PE>
+where
+    AMTParams<PE>: AMTProofs<PE = PE>,
 {
     pub fn new(amt_list: [AMTParams<PE>; COSET_N]) -> Self {
         Self::assert_validity();
         Self { amt_list }
     }
 
-    pub fn from_dir(
-        dir: impl AsRef<Path> + Clone, create_mode: bool,
-    ) -> Self {
+    pub fn from_dir(dir: impl AsRef<Path> + Clone, create_mode: bool) -> Self {
         Self::from_builder(|coset| {
             AMTParams::from_dir(
                 dir.clone(),
@@ -75,7 +74,9 @@ where AMTParams<PE>: AMTProofs<PE = PE>
         );
     }
 
-    pub const fn len() -> usize { 1 << (LOG_COL + LOG_ROW) }
+    pub const fn len() -> usize {
+        1 << (LOG_COL + LOG_ROW)
+    }
 
     pub fn warmup(&self) {
         for amt in self.amt_list.iter() {
@@ -155,7 +156,8 @@ pub struct HalfBlob<PE: Pairing, const LOG_COL: usize, const LOG_ROW: usize> {
 
 impl<PE: Pairing, const LOG_COL: usize, const LOG_ROW: usize>
     HalfBlob<PE, LOG_COL, LOG_ROW>
-where AMTParams<PE>: AMTProofs<PE = PE>
+where
+    AMTParams<PE>: AMTProofs<PE = PE>,
 {
     fn generate(mut points: Vec<Fr<PE>>, amt: &AMTParams<PE>) -> Self {
         index_reverse(&mut points);
@@ -197,9 +199,14 @@ pub struct BlobRow<PE: Pairing, const LOG_COL: usize, const LOG_ROW: usize> {
     pub high_commitment: G1<PE>,
 }
 
-impl<PE: Pairing, const LOG_COL: usize, const LOG_ROW: usize> PartialEq for BlobRow<PE, LOG_COL, LOG_ROW> {
+impl<PE: Pairing, const LOG_COL: usize, const LOG_ROW: usize> PartialEq
+    for BlobRow<PE, LOG_COL, LOG_ROW>
+{
     fn eq(&self, other: &Self) -> bool {
-        self.index == other.index && self.row == other.row && self.proof == other.proof && self.high_commitment == other.high_commitment
+        self.index == other.index
+            && self.row == other.row
+            && self.proof == other.proof
+            && self.high_commitment == other.high_commitment
     }
 }
 

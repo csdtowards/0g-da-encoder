@@ -19,7 +19,9 @@ pub struct EncodedSliceAMT {
 
 impl PartialEq for EncodedSliceAMT {
     fn eq(&self, other: &Self) -> bool {
-        self.index == other.index && self.commitment == other.commitment && self.row == other.row
+        self.index == other.index
+            && self.commitment == other.commitment
+            && self.row == other.row
     }
 }
 
@@ -35,13 +37,21 @@ impl EncodedSliceAMT {
         }
     }
 
-    pub(crate) fn index(&self) -> usize { self.index }
-
-    pub(crate) fn fields(&self) -> (G1Curve, Proof<PE>, G1Curve) {
-        (self.commitment, self.row.proof.clone(), self.row.high_commitment)
+    pub(crate) fn index(&self) -> usize {
+        self.index
     }
 
-    pub(crate) fn row(&self) -> Vec<Scalar> { self.row.row.clone() }
+    pub(crate) fn fields(&self) -> (G1Curve, Proof<PE>, G1Curve) {
+        (
+            self.commitment,
+            self.row.proof.clone(),
+            self.row.high_commitment,
+        )
+    }
+
+    pub(crate) fn row(&self) -> Vec<Scalar> {
+        self.row.row.clone()
+    }
 
     pub(crate) fn verify(
         &self, encoder_amt: &ZgSignerParams, authoritative_commitment: &G1Curve,

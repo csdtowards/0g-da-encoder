@@ -39,9 +39,7 @@ impl<
         Self { amt_list }
     }
 
-    pub fn from_dir(
-        dir: impl AsRef<Path> + Clone,
-    ) -> Self {
+    pub fn from_dir(dir: impl AsRef<Path> + Clone) -> Self {
         Self::from_builder(|coset| {
             AMTVerifyParams::from_dir(
                 dir.clone(),
@@ -56,9 +54,7 @@ impl<
 impl<const COSET_N: usize, const LOG_COL: usize, const LOG_ROW: usize>
     VerifierParams<Bn254, COSET_N, LOG_COL, LOG_ROW>
 {
-    pub fn from_dir_mont(
-        dir: impl AsRef<Path> + Clone,
-    ) -> Self {
+    pub fn from_dir_mont(dir: impl AsRef<Path> + Clone) -> Self {
         Self::from_builder(|coset| {
             AMTVerifyParams::from_dir_mont(
                 dir.clone(),

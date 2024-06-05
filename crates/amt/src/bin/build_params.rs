@@ -13,22 +13,17 @@ fn parse_param() -> Result<(usize, usize, usize)> {
         );
     }
 
-    Ok((
-        args[1].parse()?,
-        args[2].parse()?,
-        args[3].parse()?,
-    ))
+    Ok((args[1].parse()?, args[2].parse()?, args[3].parse()?))
 }
 
 fn main() {
-    let (expected_depth, verify_depth, coset) =
-        match parse_param() {
-            Ok(x) => x,
-            Err(e) => {
-                eprintln!("Cannot parse input: {:?}", e);
-                std::process::exit(1);
-            }
-        };
+    let (expected_depth, verify_depth, coset) = match parse_param() {
+        Ok(x) => x,
+        Err(e) => {
+            eprintln!("Cannot parse input: {:?}", e);
+            std::process::exit(1);
+        }
+    };
 
     tracing_subscriber::fmt()
         .with_max_level(Level::DEBUG)
@@ -36,16 +31,6 @@ fn main() {
         .with_target(false)
         .init();
 
-    AMTParams::from_dir_mont(
-        "./pp",
-        expected_depth,
-        true,
-        coset,
-    );
-    AMTVerifyParams::from_dir_mont(
-        "./pp",
-        expected_depth,
-        verify_depth,
-        coset,
-    );
+    AMTParams::from_dir_mont("./pp", expected_depth, true, coset);
+    AMTVerifyParams::from_dir_mont("./pp", expected_depth, verify_depth, coset);
 }

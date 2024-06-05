@@ -22,7 +22,10 @@ pub struct EncodedSliceMerkle {
 
 impl PartialEq for EncodedSliceMerkle {
     fn eq(&self, other: &Self) -> bool {
-        self.root == other.root && self.proof == other.proof && self.leaf_index == other.leaf_index && self.leaf == other.leaf
+        self.root == other.root
+            && self.proof == other.proof
+            && self.leaf_index == other.leaf_index
+            && self.leaf == other.leaf
     }
 }
 
@@ -39,7 +42,9 @@ impl EncodedSliceMerkle {
         }
     }
 
-    pub(crate) fn index(&self) -> usize { self.leaf_index }
+    pub(crate) fn index(&self) -> usize {
+        self.leaf_index
+    }
 
     pub(crate) fn fields(&self) -> ([Bytes32; COSET_N], Vec<Bytes32>, Bytes32) {
         (self.root, self.proof.clone(), self.leaf)

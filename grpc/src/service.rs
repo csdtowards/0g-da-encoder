@@ -158,12 +158,10 @@ mod tests {
 
     use once_cell::sync::Lazy;
     const PARAM_DIR: &str = "../pp";
-    static ENCODER_SERVICE: Lazy<EncoderService> = Lazy::new(|| {
-        EncoderService::new(PARAM_DIR)
-    });
-    static SIGNER_SERVICE: Lazy<SignerService> = Lazy::new(|| {
-        SignerService::new(PARAM_DIR)
-    });
+    static ENCODER_SERVICE: Lazy<EncoderService> =
+        Lazy::new(|| EncoderService::new(PARAM_DIR));
+    static SIGNER_SERVICE: Lazy<SignerService> =
+        Lazy::new(|| SignerService::new(PARAM_DIR));
 
     #[test_case(0 => Ok(()); "zero sized data")]
     #[test_case(1 => Ok(()); "one sized data")]

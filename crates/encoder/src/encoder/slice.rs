@@ -1,7 +1,10 @@
 use super::{error::VerifierError, light_slice::LightEncodedSlice};
 use crate::{
-    amt::slice::EncodedSliceAMT, constants::{G1Curve, Scalar, COSET_N, PE},
-    merkle::{slice::EncodedSliceMerkle, Bytes32}, utils::scalar_to_h256, ZgSignerParams,
+    amt::slice::EncodedSliceAMT,
+    constants::{G1Curve, Scalar, COSET_N, PE},
+    merkle::{slice::EncodedSliceMerkle, Bytes32},
+    utils::scalar_to_h256,
+    ZgSignerParams,
 };
 use amt::Proof;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
@@ -15,7 +18,9 @@ pub struct EncodedSlice {
 
 impl PartialEq for EncodedSlice {
     fn eq(&self, other: &Self) -> bool {
-        self.index == other.index && self.amt == other.amt && self.merkle == other.merkle
+        self.index == other.index
+            && self.amt == other.amt
+            && self.merkle == other.merkle
     }
 }
 
@@ -32,13 +37,14 @@ impl EncodedSlice {
                 row_index: self.index,
                 merkle_index: self.merkle.index(),
             });
-        }
-        else {
-            return Ok(())
+        } else {
+            return Ok(());
         }
     }
 
-    pub(crate) fn merkle_fields(&self) -> ([Bytes32; COSET_N], Vec<Bytes32>, Bytes32) {
+    pub(crate) fn merkle_fields(
+        &self,
+    ) -> ([Bytes32; COSET_N], Vec<Bytes32>, Bytes32) {
         self.merkle.fields()
     }
 
@@ -52,9 +58,8 @@ impl EncodedSlice {
                 row_index: self.index,
                 amt_index: self.amt.index(),
             });
-        }
-        else {
-            return Ok(())
+        } else {
+            return Ok(());
         }
     }
 

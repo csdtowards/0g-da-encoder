@@ -48,15 +48,21 @@ impl EncodedBlob {
         EncodedSlice::new(index, amt, merkle)
     }
 
-    pub fn get_commitment(&self) -> G1Curve { self.amt.get_commitment() }
+    pub fn get_commitment(&self) -> G1Curve {
+        self.amt.get_commitment()
+    }
 
-    pub fn get_roots(&self) -> [Bytes32; COSET_N] { self.merkle.root() }
+    pub fn get_roots(&self) -> [Bytes32; COSET_N] {
+        self.merkle.root()
+    }
 
     pub fn get_file_root(&self) -> Bytes32 {
         compute_file_root(&self.get_roots())
     }
 
-    pub fn get_data(&self) -> &Vec<Bytes32> { &self.merkle.data }
+    pub fn get_data(&self) -> &Vec<Bytes32> {
+        &self.merkle.data
+    }
 }
 
 pub fn compute_file_root(roots: &[Bytes32; COSET_N]) -> Bytes32 {
@@ -229,16 +235,19 @@ impl EncodedBlob {
 mod tests {
     use super::EncodedBlob;
     use crate::{
-        constants::{BLOB_ROW_ENCODED, MAX_BLOB_SIZE}, encoder::error::EncoderError, raw_blob::RawBlob, raw_data::RawData, ZgEncoderParams, ZgSignerParams
+        constants::{BLOB_ROW_ENCODED, MAX_BLOB_SIZE},
+        encoder::error::EncoderError,
+        raw_blob::RawBlob,
+        raw_data::RawData,
+        ZgEncoderParams, ZgSignerParams,
     };
     use amt::{EncoderParams, VerifierParams};
     use once_cell::sync::Lazy;
     use rand::{rngs::StdRng, Rng, SeedableRng};
     use test_case::test_case;
 
-    static ENCODER: Lazy<ZgEncoderParams> = Lazy::new(|| {
-        EncoderParams::from_dir_mont("../amt/pp", true)
-    });
+    static ENCODER: Lazy<ZgEncoderParams> =
+        Lazy::new(|| EncoderParams::from_dir_mont("../amt/pp", true));
     static SIGNER: Lazy<ZgSignerParams> =
         Lazy::new(|| VerifierParams::from_dir_mont("../amt/pp"));
 
@@ -259,7 +268,7 @@ mod tests {
     fn test_light_slice() -> () {
         let num_bytes = 1234;
         let encoded_blob = gen_encoded_blob(num_bytes).unwrap();
-        
+
         for index in 0..BLOB_ROW_ENCODED {
             let encoded_slice = encoded_blob.get_row(index);
             let row = encoded_slice.row();
@@ -276,7 +285,7 @@ mod tests {
     #[test_case(MAX_BLOB_SIZE + 1 => Err(EncoderError::TooLargeBlob { actual: MAX_BLOB_SIZE + 1, expected_max: MAX_BLOB_SIZE }); "overflow sized data")]
     fn test_batcher_and_verify(num_bytes: usize) -> Result<(), EncoderError> {
         let encoded_blob = gen_encoded_blob(num_bytes)?;
-        
+
         encoded_blob.test_verify(&SIGNER);
 
         Ok(())

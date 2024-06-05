@@ -42,7 +42,9 @@ impl<PE: Pairing> PartialEq for Proof<PE> {
 impl<PE: Pairing> Deref for Proof<PE> {
     type Target = Vec<(G1Aff<PE>, G1Aff<PE>)>;
 
-    fn deref(&self) -> &Self::Target { &self.0 }
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]

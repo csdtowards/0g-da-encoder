@@ -20,13 +20,19 @@ pub enum VerifierError {
 }
 
 impl Into<String> for EncoderError {
-    fn into(self) -> String { format!("{:?}", self) }
+    fn into(self) -> String {
+        format!("{:?}", self)
+    }
 }
 
 impl From<AmtError> for VerifierError {
-    fn from(error: AmtError) -> Self { VerifierError::AMT(error) }
+    fn from(error: AmtError) -> Self {
+        VerifierError::AMT(error)
+    }
 }
 
 impl From<MerkleError> for VerifierError {
-    fn from(error: MerkleError) -> Self { VerifierError::Merkle(error) }
+    fn from(error: MerkleError) -> Self {
+        VerifierError::Merkle(error)
+    }
 }
