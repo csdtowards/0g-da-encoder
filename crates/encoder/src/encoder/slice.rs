@@ -19,6 +19,10 @@ impl EncodedSlice {
         Self { index, amt, merkle }
     }
 
+    pub fn amt(&self) -> &EncodedSliceAMT { &self.amt }
+
+    pub fn merkle(&self) -> &EncodedSliceMerkle { &self.merkle }
+
     pub fn verify(
         &self, encoder_amt: &ZgEncoderParams,
         authoritative_commitment: &G1Curve, authoritative_root: &[u8; 32],

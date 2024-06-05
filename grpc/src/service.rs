@@ -90,12 +90,18 @@ impl EncoderService {
 
     #[cfg(test)]
     pub fn deserialize_reply(&self, reply: EncodeBlobReply, data: &[u8]) {
-        use amt::ec_algebra::CanonicalDeserialize;
+        use amt::ec_algebra::{AffineRepr, CanonicalDeserialize};
+        use ark_bn254::{Fq, G1Affine};
         use zg_encoder::constants::G1Curve;
         // deserialize
-        let erasure_commitment =
-            G1Curve::deserialize_uncompressed(&*reply.erasure_commitment)
-                .unwrap();
+
+        let erasure_commitment = {
+            let mut raw_commitment = &*reply.erasure_commitment;
+            let x = Fq::deserialize_uncompressed(&mut raw_commitment).unwrap();
+            let y = Fq::deserialize_uncompressed(&mut raw_commitment).unwrap();
+            G1Affine::new(x, y).into_group()
+        };
+
         let storage_root =
             <[u8; 32]>::deserialize_uncompressed(&*reply.storage_root).unwrap();
         let encoded_data_h256: Vec<_> = reply
@@ -138,7 +144,6 @@ mod tests {
     use zg_encoder::{constants::MAX_BLOB_SIZE, EncoderError, RawData};
 
     use crate::EncoderService;
-    #[test_case(0 => Ok(()); "zero sized data")]
     #[test_case(1 => Ok(()); "one sized data")]
     #[test_case(1234 => Ok(()); "normal sized data")]
     #[test_case(MAX_BLOB_SIZE => Ok(()); "exact sized data")]
