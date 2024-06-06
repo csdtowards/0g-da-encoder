@@ -8,7 +8,7 @@ mod utils;
 
 pub use amt::{blob::EncodedBlobAMT, slice::EncodedSliceAMT};
 pub use encoder::{
-    blob::EncodedBlob, error::EncoderError, slice::EncodedSlice,
+    blob::EncodedBlob, error::EncoderError, slice::EncodedSlice, light_slice::LightEncodedSlice,
 };
 pub use merkle::{blob::EncodedBlobMerkle, slice::EncodedSliceMerkle};
 pub use raw_blob::RawBlob;

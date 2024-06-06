@@ -83,10 +83,10 @@ impl EncodedSlice {
 }
 
 impl EncodedSlice {
-    pub(crate) fn row(&self) -> Vec<Scalar> {
+    pub fn row(&self) -> Vec<Scalar> {
         self.amt.row()
     }
-    pub(crate) fn into_light_slice(&self) -> LightEncodedSlice {
+    pub fn into_light_slice(&self) -> LightEncodedSlice {
         LightEncodedSlice::from_slice(self)
     }
 }

@@ -8,17 +8,17 @@ use crate::{
 use amt::{BlobRow, Proof};
 
 pub struct LightEncodedSlice {
-    index: usize,
-    amt_commitment: G1Curve,
-    amt_proof: Proof<PE>,
-    amt_high_commitment: G1Curve,
-    merkle_root: [Bytes32; COSET_N],
-    merkle_proof: Vec<Bytes32>,
-    merkle_leaf: Bytes32,
+    pub index: usize,
+    pub amt_commitment: G1Curve,
+    pub amt_proof: Proof<PE>,
+    pub amt_high_commitment: G1Curve,
+    pub merkle_root: [Bytes32; COSET_N],
+    pub merkle_proof: Vec<Bytes32>,
+    pub merkle_leaf: Bytes32,
 }
 
 impl LightEncodedSlice {
-    pub(crate) fn into_slice(&self, row: Vec<Scalar>) -> EncodedSlice {
+    pub fn into_slice(&self, row: Vec<Scalar>) -> EncodedSlice {
         let amt_row = BlobRow::<PE, BLOB_COL_LOG, BLOB_ROW_LOG> {
             index: self.index % BLOB_ROW_N,
             row,
@@ -56,7 +56,7 @@ impl LightEncodedSlice {
 }
 
 impl LightEncodedSlice {
-    pub(crate) fn from_slice(slice: &EncodedSlice) -> Self {
+    pub fn from_slice(slice: &EncodedSlice) -> Self {
         slice.check_amt_idx().unwrap();
         slice.check_merkle_idx().unwrap();
 
