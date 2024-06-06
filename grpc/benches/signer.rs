@@ -1,4 +1,5 @@
-use amt::ec_algebra::CanonicalDeserialize;
+use amt::ec_algebra::{AffineRepr, CanonicalDeserialize};
+use ark_bn254::{Fq, G1Affine};
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use grpc::{EncoderService, SignerService};
 use rand::{rngs::StdRng, Rng, SeedableRng};
@@ -30,8 +31,12 @@ fn criterion_benchmark(c: &mut Criterion) {
     let mut data = vec![0u8; num_bytes];
     rng.fill(&mut data[..]);
     let reply = encoder_service.process_data(&data).unwrap();
-    let erasure_commitment =
-        G1Curve::deserialize_uncompressed(&*reply.erasure_commitment).unwrap();
+    let erasure_commitment = {
+        let mut raw_commitment = &*reply.erasure_commitment;
+        let x = Fq::deserialize_uncompressed(&mut raw_commitment).unwrap();
+        let y = Fq::deserialize_uncompressed(&mut raw_commitment).unwrap();
+        G1Affine::new(x, y).into_group()
+    };
     let storage_root =
         <[u8; 32]>::deserialize_uncompressed(&*reply.storage_root).unwrap();
     let encoded_slice: Vec<_> = reply

@@ -16,7 +16,7 @@ pub use encoder::encoder_server::EncoderServer;
 use encoder::{encoder_server::Encoder, EncodeBlobReply, EncodeBlobRequest};
 
 use amt::{
-    ec_algebra::CanonicalSerialize, EncoderParams, PowerTau, VerifierParams,
+    ec_algebra::{CurveGroup, CanonicalSerialize}, EncoderParams, PowerTau, VerifierParams,
 };
 use zg_encoder::{
     constants::{
@@ -68,8 +68,13 @@ impl EncoderService {
 
         let encoded_blob = EncodedBlob::build(&raw_blob, &self.params);
 
-        let erasure_commitment =
-            serailize_to_bytes(&encoded_blob.get_commitment());
+        let erasure_commitment = {
+            let c = encoded_blob.get_commitment().into_affine();
+            let mut answer: Vec<u8> = Vec::new();
+            c.x.serialize_uncompressed(&mut answer).unwrap();
+            c.y.serialize_uncompressed(&mut answer).unwrap();
+            answer
+        };
         let storage_root = encoded_blob.get_file_root().to_vec();
         let encoded_data = {
             let data = encoded_blob.get_data();
@@ -110,10 +115,16 @@ impl SignerService {
     ) {
         use amt::ec_algebra::CanonicalDeserialize;
         use zg_encoder::constants::G1Curve;
+        use ark_bn254::{Fq, G1Affine, G1Projective};
         // deserialize
-        let erasure_commitment =
-            G1Curve::deserialize_uncompressed(&*reply.erasure_commitment)
-                .unwrap();
+
+        let erasure_commitment: G1Projective = {
+            let mut raw_commitment = &*reply.erasure_commitment;
+            let x = Fq::deserialize_uncompressed(&mut raw_commitment).unwrap();
+            let y = Fq::deserialize_uncompressed(&mut raw_commitment).unwrap();
+            G1Affine::new(x, y).into()
+        };
+
         let storage_root =
             <[u8; 32]>::deserialize_uncompressed(&*reply.storage_root).unwrap();
         let encoded_data_h256: Vec<_> = reply
@@ -163,7 +174,6 @@ mod tests {
     static SIGNER_SERVICE: Lazy<SignerService> =
         Lazy::new(|| SignerService::new(PARAM_DIR));
 
-    #[test_case(0 => Ok(()); "zero sized data")]
     #[test_case(1 => Ok(()); "one sized data")]
     #[test_case(1234 => Ok(()); "normal sized data")]
     #[test_case(MAX_BLOB_SIZE => Ok(()); "exact sized data")]

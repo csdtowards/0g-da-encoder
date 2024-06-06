@@ -31,6 +31,10 @@ impl EncodedSlice {
         Self { index, amt, merkle }
     }
 
+    pub fn amt(&self) -> &EncodedSliceAMT { &self.amt }
+
+    pub fn merkle(&self) -> &EncodedSliceMerkle { &self.merkle }
+
     pub(crate) fn check_merkle_idx(&self) -> Result<(), VerifierError> {
         if self.index != self.merkle.index() {
             return Err(VerifierError::UnmatchedMerkleIndex {

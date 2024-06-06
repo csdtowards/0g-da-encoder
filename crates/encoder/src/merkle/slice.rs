@@ -13,7 +13,6 @@ use keccak_hash::keccak;
 pub struct EncodedSliceMerkle {
     // index: 0, 1, ...,
     // BLOB_ROW_ENCODED
-    //row: Vec<Bytes32>, // BLOB_COL_N
     root: [Bytes32; COSET_N],
     proof: Vec<Bytes32>,
     leaf_index: usize,
