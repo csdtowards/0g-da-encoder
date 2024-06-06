@@ -12,9 +12,10 @@ use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 
 #[derive(Debug, CanonicalSerialize, CanonicalDeserialize, PartialEq)]
 pub struct EncodedSliceAMT {
-    index: usize, /* index: 0, 1, ..., BLOB_ROW_ENCODED - 1 */
-    commitment: G1Curve,
-    row: BlobRow<PE, BLOB_COL_LOG, BLOB_ROW_LOG>, // index in half, row, proof
+    pub index: usize, /* index: 0, 1, ..., BLOB_ROW_ENCODED - 1 */
+    pub commitment: G1Curve,
+    pub row: BlobRow<PE, BLOB_COL_LOG, BLOB_ROW_LOG>, /* index in half, row,
+                                                       * proof */
 }
 
 impl EncodedSliceAMT {
