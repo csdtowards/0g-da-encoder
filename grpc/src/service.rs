@@ -15,7 +15,7 @@ pub mod encoder {
 pub use encoder::encoder_server::EncoderServer;
 use encoder::{encoder_server::Encoder, EncodeBlobReply, EncodeBlobRequest};
 
-use amt::{ec_algebra::CanonicalSerialize, EncoderParams, PowerTau};
+use amt::{ec_algebra::{CanonicalSerialize, CurveGroup}, EncoderParams, PowerTau};
 use zg_encoder::{
     constants::{
         Scalar, BLOB_COL_LOG, BLOB_ROW_ENCODED, BLOB_ROW_LOG, COSET_N, PE,
@@ -65,8 +65,13 @@ impl EncoderService {
 
         let encoded_blob = EncodedBlob::build(&raw_blob, &self.params);
 
-        let erasure_commitment =
-            serailize_to_bytes(&encoded_blob.get_commitment());
+        let erasure_commitment = {
+            let c = encoded_blob.get_commitment().into_affine();
+            let mut answer: Vec<u8> = Vec::new();
+            c.x.serialize_uncompressed(&mut answer).unwrap();
+            c.y.serialize_uncompressed(&mut answer).unwrap();
+            answer
+        };
         let storage_root = encoded_blob.get_file_root().to_vec();
         let encoded_data = {
             let data = encoded_blob.get_data();
