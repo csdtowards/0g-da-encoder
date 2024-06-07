@@ -30,5 +30,6 @@ EOF
     fi
 else
     echo "CUDA Enviroment not installed"
+    exit 1
 fi
 

@@ -32,6 +32,6 @@ compute_constrained data/challenge_$degree data/response_$degree $degree $pot_si
 
 # 输出response文件的哈希值
 echo "The BLAKE2b hash of the response file is:"
-b2sum response_$degree
+b2sum data/response_$degree
 
 echo "Done! The response file contains the Powers of Tau parameters."
