@@ -23,16 +23,19 @@ use rayon::prelude::*;
 
 #[cfg(not(feature = "cuda-bls12-381"))]
 impl AMTParams<Bn254> {
-    #[instrument(skip_all, name = "load_amt_params", level = 2, parent = None, fields(depth=expected_depth, coset=coset))]
+    #[instrument(skip_all, name = "load_amt_params", level = 2, parent = None, fields(depth=depth, prove_depth=prove_depth, coset=coset))]
     pub fn from_dir_mont(
-        dir: impl AsRef<Path>, expected_depth: usize, coset: usize,
+        dir: impl AsRef<Path>, depth: usize, prove_depth: usize, coset: usize,
         create_mode: bool, pp: Option<&PowerTau<Bn254>>,
     ) -> Self {
         debug!(
-            depth = expected_depth,
-            coset, "Load AMT params (mont format)"
+            depth = depth,
+            prove_depth = prove_depth,
+            coset,
+            "Load AMT params (mont format)"
         );
-        let file_name = amtp_file_name::<Bn254>(expected_depth, coset, true);
+        let file_name =
+            amtp_file_name::<Bn254>(depth, prove_depth, coset, true);
         let path = dir.as_ref().join(file_name);
 
         match Self::load_cached_mont(&path) {
@@ -51,7 +54,7 @@ impl AMTParams<Bn254> {
         info!("Recover from unmont format");
 
         let params =
-            Self::from_dir(dir, expected_depth, coset, create_mode, pp);
+            Self::from_dir(dir, depth, prove_depth, coset, create_mode, pp);
 
         let writer = File::create(&*path).unwrap();
 
@@ -68,17 +71,14 @@ impl AMTParams<Bn254> {
 }
 
 impl<PE: Pairing> AMTParams<PE> {
-    #[instrument(skip_all, name = "load_amt_params", level = 2, parent = None, fields(depth=expected_depth, coset=coset))]
+    #[instrument(skip_all, name = "load_amt_params", level = 2, parent = None, fields(depth=depth, prove_depth=prove_depth, coset=coset))]
     pub fn from_dir(
-        dir: impl AsRef<Path>, expected_depth: usize, coset: usize,
+        dir: impl AsRef<Path>, depth: usize, prove_depth: usize, coset: usize,
         create_mode: bool, pp: Option<&PowerTau<PE>>,
     ) -> Self {
-        debug!(
-            depth = expected_depth,
-            coset, "Load AMT params (unmont format)"
-        );
+        debug!(depth, prove_depth, coset, "Load AMT params (unmont format)");
 
-        let file_name = amtp_file_name::<PE>(expected_depth, coset, false);
+        let file_name = amtp_file_name::<PE>(depth, prove_depth, coset, false);
         let path = dir.as_ref().join(file_name);
 
         if let Ok(params) = Self::load_cached(&path) {
@@ -96,10 +96,10 @@ impl<PE: Pairing> AMTParams<PE> {
             pp.clone()
         } else {
             info!("Recover AMT parameters by loading default pp");
-            PowerTau::<PE>::from_dir(dir, expected_depth, create_mode)
+            PowerTau::<PE>::from_dir(dir, depth, create_mode)
         };
 
-        let params = Self::from_pp(pp, coset);
+        let params = Self::from_pp(pp, prove_depth, coset);
         let buffer = File::create(&path).unwrap();
 
         info!(file = ?path, "Save generated AMT params (unmont format)");
@@ -134,7 +134,7 @@ impl<PE: Pairing> AMTParams<PE> {
         <Fr<PE> as FftField>::TWO_ADIC_ROOT_OF_UNITY.pow(&[pow as u64])
     }
 
-    pub fn from_pp(pp: PowerTau<PE>, coset: usize) -> Self {
+    pub fn from_pp(pp: PowerTau<PE>, prove_depth: usize, coset: usize) -> Self {
         info!("Generate AMT params from powers of tau");
 
         let (mut g1pp, mut g2pp, mut high_g1pp, mut high_g2pp) =
@@ -145,7 +145,7 @@ impl<PE: Pairing> AMTParams<PE> {
         assert_eq!(g1pp.len(), g2pp.len());
         assert!(g1pp.len().is_power_of_two());
         let length = g1pp.len();
-        let depth = ark_std::log2(length) as usize;
+        assert!(length >= 1 << prove_depth);
 
         if coset > 0 {
             debug!(coset, "Adjust powers of tau according to coset index");
@@ -171,12 +171,12 @@ impl<PE: Pairing> AMTParams<PE> {
 
         let basis: Vec<G1Aff<PE>> =
             Self::enact(Self::gen_basis(&g1pp[..], &fft_domain));
-        let quotients: Vec<Vec<G1Aff<PE>>> = (1..=depth)
+        let quotients: Vec<Vec<G1Aff<PE>>> = (1..=prove_depth)
             .map(|d| {
                 Self::enact(Self::gen_quotients(&g1pp[..], &fft_domain, d))
             })
             .collect();
-        let vanishes: Vec<Vec<G2Aff<PE>>> = (1..=depth)
+        let vanishes: Vec<Vec<G2Aff<PE>>> = (1..=prove_depth)
             .map(|d| Self::enact(Self::gen_vanishes(&g2pp[..], d)))
             .collect();
         let high_basis: Vec<G1Aff<PE>> =

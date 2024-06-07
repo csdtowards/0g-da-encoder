@@ -39,7 +39,7 @@ fn main() {
     let start = Instant::now();
 
     let params = ZgEncoderParams::from_dir_mont("../crates/amt/pp", true, None);
-    println!("Load time elapsed {:?}", start.elapsed());
+    info!("Load time elapsed {:?}", start.elapsed());
 
     params.warmup();
 

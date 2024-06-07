@@ -174,7 +174,7 @@ mod tests {
     use crate::{EncoderService, SignerService};
 
     use once_cell::sync::Lazy;
-    const PARAM_DIR: &str = "../crate/amt/pp";
+    const PARAM_DIR: &str = "../crates/amt/pp";
     static ENCODER_SERVICE: Lazy<EncoderService> =
         Lazy::new(|| EncoderService::new_for_test(PARAM_DIR));
     static SIGNER_SERVICE: Lazy<SignerService> = Lazy::new(|| {

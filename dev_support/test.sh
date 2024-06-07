@@ -32,7 +32,14 @@ if [[ $CUDA_TEST_EXITCODE -eq 0 ]]; then
     cargo check --all --tests --benches --features cuda
 fi
 
+rm -rf "./crates/amt/pp/*-11.bin"
+rm -rf "./crates/amt/pp/*-08.bin"
+
 cargo test -r --all --features parallel
+
+rm -rf "./crates/amt/pp/*-11.bin"
+rm -rf "./crates/amt/pp/*-08.bin"
+
 if [[ $CUDA_TEST_EXITCODE -eq 0 ]]; then
     cargo test -r -p amt --features amt/parallel,amt/cuda-bn254
     cargo test -r -p amt --features amt/parallel,amt/cuda-bls12-381

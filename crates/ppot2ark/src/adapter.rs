@@ -1,26 +1,22 @@
 // use crate::ark::FqRepr;
 use std::marker::PhantomData;
 
-use ark_ec::AffineRepr as _;
-use ark_ff::{One as _, PrimeField as _, Zero as _};
-use ark_std::str::FromStr;
-use bellman_ce::pairing::CurveAffine as _;
-use ff::{Field as _, PrimeField as _};
+use ark_ec::AffineRepr;
+use bellman_ce::pairing::CurveAffine;
+use ff::PrimeField;
 use std::fmt::{Debug, Display};
 
 mod ppot {
     pub use bellman_ce::pairing::bn256::{
-        Bn256 as Bn, Fq, Fq2, FqRepr, Fr, FrRepr, G1Affine, G2Affine, G1, G2,
+        Fq, Fq2, FqRepr, Fr, FrRepr, G1Affine, G2Affine,
     };
 }
 
 mod ark {
+    pub use ark_ff::BigInt;
     use ark_ff::MontBackend;
-    pub use ark_ff::{fields::PrimeField, BigInt, Field, One};
 
-    pub use ark_bn254::{
-        Fq, Fq2, Fr, G1Affine, G1Projective, G2Affine, G2Projective,
-    };
+    pub use ark_bn254::{Fq, Fq2, Fr, G1Affine, G2Affine};
 
     pub use ark_ff::fields::Fp;
 
@@ -47,17 +43,13 @@ pub trait Adapter {
 impl Adapter for ppot::FqRepr {
     type Output = ark::FqRepr;
 
-    fn adapt(self) -> Self::Output {
-        ark::BigInt(self.0)
-    }
+    fn adapt(self) -> Self::Output { ark::BigInt(self.0) }
 }
 
 impl Adapter for ppot::FrRepr {
     type Output = ark::FrRepr;
 
-    fn adapt(self) -> Self::Output {
-        ark::BigInt(self.0)
-    }
+    fn adapt(self) -> Self::Output { ark::BigInt(self.0) }
 }
 
 impl Adapter for ppot::Fq {

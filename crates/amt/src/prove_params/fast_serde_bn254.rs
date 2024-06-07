@@ -25,6 +25,9 @@ pub fn write_amt_params<W: Write>(
     let degree = ark_std::log2(params.basis.len()) as u8;
     degree.serialize_uncompressed(&mut writer)?;
 
+    let sub_degree = params.quotients.len() as u8;
+    sub_degree.serialize_uncompressed(&mut writer)?;
+
     params.g2.serialize_uncompressed(&mut writer)?;
     params.high_g2.serialize_uncompressed(&mut writer)?;
 
@@ -58,6 +61,8 @@ pub fn read_amt_params<R: Read>(mut reader: R) -> Result<AMTParams<PE>> {
     }
 
     let degree = u8::deserialize_uncompressed_unchecked(&mut reader)? as usize;
+    let sub_degree =
+        u8::deserialize_uncompressed_unchecked(&mut reader)? as usize;
 
     let g2 = G2::<PE>::deserialize_uncompressed(&mut reader)?;
 
@@ -66,12 +71,12 @@ pub fn read_amt_params<R: Read>(mut reader: R) -> Result<AMTParams<PE>> {
     let basis = read_amt_g1_line(&mut reader, 1 << degree)?;
 
     let mut quotients = vec![];
-    for _ in 0..degree {
+    for _ in 0..sub_degree {
         quotients.push(read_amt_g1_line(&mut reader, 1 << degree)?);
     }
 
     let mut vanishes = vec![];
-    for d in 0..degree {
+    for d in 0..sub_degree {
         vanishes.push(read_amt_g2_line(&mut reader, 1 << (d + 1))?);
     }
 

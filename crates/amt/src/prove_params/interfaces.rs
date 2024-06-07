@@ -8,10 +8,10 @@ pub trait AMTProofs {
     type PE: Pairing;
 
     fn gen_amt_proofs(
-        &self, ri_data: &[Fr<Self::PE>], batch_size: usize,
+        &self, ri_data: &[Fr<Self::PE>],
     ) -> (G1<Self::PE>, AllProofs<Self::PE>);
 
-    fn warmup(&self, _height: usize) {}
+    fn warmup(&self) {}
 }
 
 #[cfg(not(feature = "cuda"))]
@@ -19,9 +19,9 @@ impl<PE: Pairing> AMTProofs for AMTParams<PE> {
     type PE = PE;
 
     fn gen_amt_proofs(
-        &self, ri_data: &[Fr<Self::PE>], batch_size: usize,
+        &self, ri_data: &[Fr<Self::PE>],
     ) -> (G1<Self::PE>, AllProofs<Self::PE>) {
-        self.gen_all_proofs(ri_data, batch_size)
+        self.gen_all_proofs(ri_data)
     }
 }
 
@@ -33,13 +33,13 @@ impl AMTProofs for AMTParams<PE> {
     type PE = PE;
 
     fn gen_amt_proofs(
-        &self, ri_data: &[Fr<Self::PE>], batch_size: usize,
+        &self, ri_data: &[Fr<Self::PE>],
     ) -> (G1<Self::PE>, AllProofs<Self::PE>) {
-        self.gen_all_proofs_gpu(ri_data, batch_size)
+        self.gen_all_proofs_gpu(ri_data)
     }
 
-    fn warmup(&self, height: usize) {
-        let _ = self.read_gpu_bases(height);
+    fn warmup(&self) {
+        let _ = self.read_gpu_bases();
         ag_cuda_ec::init_local_workspace();
     }
 }

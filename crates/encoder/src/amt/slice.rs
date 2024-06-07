@@ -48,7 +48,7 @@ impl EncodedSliceAMT {
         )
     }
 
-    pub(crate) fn row(&self) -> Vec<Scalar> { self.row.row.clone() }
+    pub(crate) fn row(&self) -> &Vec<Scalar> { &self.row.row }
 
     pub(crate) fn verify(
         &self, encoder_amt: &ZgSignerParams, authoritative_commitment: &G1Curve,

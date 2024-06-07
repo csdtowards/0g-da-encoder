@@ -1,14 +1,13 @@
 use amt::{AMTParams, AMTVerifyParams, PowerTau};
 use anyhow::{bail, Result};
 use tracing::Level;
-use tracing_subscriber::fmt::format::FmtSpan;
 
 fn parse_param() -> Result<(usize, usize, usize, Option<String>)> {
     let args: Vec<String> = std::env::args().collect();
 
     if args.len() < 3 {
         bail!(
-            "Usage: {} <amt-depth> <verify-depth> <coset-index> [<power_tau_dir>]",
+            "Usage: {} <amt-depth> <verify-depth> <coset-number> [<power_tau_dir>]",
             args[0]
         );
     }
@@ -23,7 +22,7 @@ fn parse_param() -> Result<(usize, usize, usize, Option<String>)> {
 }
 
 fn main() {
-    let (expected_depth, verify_depth, coset, ptau_dir) = match parse_param() {
+    let (depth, verify_depth, coset, ptau_dir) = match parse_param() {
         Ok(x) => x,
         Err(e) => {
             eprintln!("Cannot parse input: {:?}", e);
@@ -33,16 +32,22 @@ fn main() {
 
     tracing_subscriber::fmt()
         .with_max_level(Level::DEBUG)
-        .with_span_events(FmtSpan::CLOSE)
         .with_target(false)
         .init();
 
-    let pp = if let Some(dir) = ptau_dir {
-        Some(PowerTau::from_dir(dir, expected_depth, false))
-    } else {
-        None
-    };
+    let create_mode = ptau_dir.is_none();
+    let dir = ptau_dir.unwrap_or("./params/test".into());
+    let pp = PowerTau::from_dir(&dir, depth, create_mode);
 
-    AMTParams::from_dir_mont("./pp", expected_depth, coset, true, pp.as_ref());
-    AMTVerifyParams::from_dir_mont("./pp", expected_depth, verify_depth, coset);
+    for coset_index in 0..coset {
+        AMTParams::from_dir_mont(
+            &dir,
+            depth,
+            verify_depth,
+            coset_index,
+            true,
+            Some(&pp),
+        );
+        AMTVerifyParams::from_dir_mont(&dir, depth, verify_depth, coset_index);
+    }
 }

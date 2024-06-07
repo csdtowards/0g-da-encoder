@@ -102,8 +102,9 @@ where G1<PE>: VariableBaseMSM<MulBase = G1Aff<PE>>
 
     #[instrument(skip_all, name = "gen_amt_proofs", level = 2)]
     pub fn gen_all_proofs(
-        &self, ri_data: &[Fr<PE>], batch_size: usize,
+        &self, ri_data: &[Fr<PE>],
     ) -> (G1<PE>, AllProofs<PE>) {
+        let batch_size = self.len() / (1 << self.quotients.len());
         let proofs = self.gen_prove_tree(ri_data, batch_size);
         let (commitment, commitments) =
             self.gen_commitment_tree(ri_data, batch_size);
@@ -169,8 +170,12 @@ mod tests {
         let commitment = AMT.commitment(ri_data);
 
         for log_batch in 0..TEST_LEVEL {
+            let prove_depth = TEST_LEVEL - log_batch;
             let batch = 1 << log_batch;
-            let all_proofs = AMT.gen_all_proofs(ri_data, batch).1;
+            let all_proofs = AMT
+                .reduce_prove_depth(prove_depth)
+                .gen_all_proofs(ri_data)
+                .1;
             for (index, data) in ri_data.chunks_exact(batch).enumerate() {
                 let (proof, high_commitment) = all_proofs.get_proof(index);
                 AMT.verify_proof(

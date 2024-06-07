@@ -46,6 +46,7 @@ where AMTParams<PE>: AMTProofs<PE = PE>
             AMTParams::from_dir(
                 dir.clone(),
                 LOG_COL + LOG_ROW,
+                LOG_ROW,
                 coset,
                 create_mode,
                 pp,
@@ -81,7 +82,7 @@ where AMTParams<PE>: AMTProofs<PE = PE>
 
     pub fn warmup(&self) {
         for amt in self.amt_list.iter() {
-            AMTProofs::warmup(amt, LOG_COL);
+            AMTProofs::warmup(amt);
         }
     }
 
@@ -120,6 +121,7 @@ impl<const COSET_N: usize, const LOG_COL: usize, const LOG_ROW: usize>
             AMTParams::from_dir_mont(
                 dir.clone(),
                 LOG_COL + LOG_ROW,
+                LOG_ROW,
                 coset,
                 create_mode,
                 pp,
@@ -165,7 +167,7 @@ where AMTParams<PE>: AMTProofs<PE = PE>
 {
     fn generate(mut points: Vec<Fr<PE>>, amt: &AMTParams<PE>) -> Self {
         index_reverse(&mut points);
-        let (commitment, proofs) = amt.gen_amt_proofs(&points, 1 << LOG_COL);
+        let (commitment, proofs) = amt.gen_amt_proofs(&points);
 
         index_reverse(&mut points);
         change_matrix_direction(&mut points, LOG_ROW, LOG_COL);

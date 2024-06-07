@@ -32,7 +32,7 @@ pub static G2PP: Lazy<Vec<G2<PE>>> =
     Lazy::new(|| PP.g2pp.iter().copied().map(|x| G2::<PE>::from(x)).collect());
 
 pub static AMT: Lazy<AMTParams<PE>> =
-    Lazy::new(|| AMTParams::from_pp(PP.clone(), 0));
+    Lazy::new(|| AMTParams::from_pp(PP.clone(), TEST_LEVEL, 0));
 
 pub static DOMAIN: Lazy<Radix2EvaluationDomain<Fr<PE>>> =
     Lazy::new(|| Radix2EvaluationDomain::new(TEST_LENGTH).unwrap());

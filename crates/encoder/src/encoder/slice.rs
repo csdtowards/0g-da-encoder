@@ -8,6 +8,9 @@ use crate::{
 };
 use amt::Proof;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
+use ark_std::cfg_iter;
+#[cfg(feature="parallel")]
+use rayon::prelude::*;
 
 #[derive(Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct EncodedSlice {
@@ -87,7 +90,14 @@ impl EncodedSlice {
 }
 
 impl EncodedSlice {
-    pub fn row(&self) -> Vec<Scalar> { self.amt.row() }
+    pub fn amt_row(&self) -> Vec<Scalar> { self.amt.row().clone() }
+
+    pub fn merkle_row(&self) -> Vec<[u8; 32]> {
+        cfg_iter!(self.amt.row())
+            .cloned()
+            .map(scalar_to_h256)
+            .collect()
+    }
 
     pub fn into_light_slice(&self) -> LightEncodedSlice {
         LightEncodedSlice::from_slice(self)

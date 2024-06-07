@@ -267,7 +267,7 @@ mod tests {
 
         for index in 0..BLOB_ROW_ENCODED {
             let encoded_slice = encoded_blob.get_row(index);
-            let row = encoded_slice.row();
+            let row = encoded_slice.amt_row();
             let light_slice = encoded_slice.into_light_slice();
             let encoded_slice_recovered = light_slice.into_slice(row);
             assert_eq!(encoded_slice, encoded_slice_recovered);

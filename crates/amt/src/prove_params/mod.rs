@@ -45,6 +45,17 @@ impl<PE: Pairing> AMTParams<PE> {
             device_mem: RwLock::new(None),
         }
     }
+
+    pub fn reduce_prove_depth(&self, depth: usize) -> Self {
+        Self::new(
+            self.basis.clone(),
+            self.quotients[..depth].to_vec(),
+            self.vanishes[..depth].to_vec(),
+            self.g2,
+            self.high_basis.clone(),
+            self.high_g2,
+        )
+    }
 }
 
 impl<PE: Pairing> PartialEq for AMTParams<PE> {

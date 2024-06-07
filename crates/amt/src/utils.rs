@@ -17,31 +17,38 @@ pub(crate) fn type_hash<T: Any>() -> String {
     BASE64_STANDARD.encode(s.finish().to_be_bytes())
 }
 
-fn file_name<PE: Pairing>(prefix: &str, depth: usize) -> String {
-    format!("{}-{}-{:02}.bin", prefix, &type_hash::<PE>()[..6], depth)
+fn file_name<PE: Pairing>(
+    prefix: &str, depth: usize, sub_depth: Option<usize>,
+) -> String {
+    let suffix = if let Some(x) = sub_depth {
+        format!("{:02}-{:02}.bin", x, depth)
+    } else {
+        format!("{:02}.bin", depth)
+    };
+    format!("{}-{}-{}", prefix, &type_hash::<PE>()[..6], suffix)
 }
 
 pub fn ptau_file_name<PE: Pairing>(depth: usize, mont: bool) -> String {
-    let prefix = format!("power-tau-full{}", if mont { "-mont" } else { "" });
-    file_name::<PE>(&prefix, depth)
+    let prefix = format!("power-tau{}", if mont { "-mont" } else { "" });
+    file_name::<PE>(&prefix, depth, None)
 }
 
 pub fn amtp_file_name<PE: Pairing>(
-    depth: usize, coset: usize, mont: bool,
+    depth: usize, prove_depth: usize, coset: usize, mont: bool,
 ) -> String {
     let prefix = format!(
-        "amt-params-coset{}{}",
+        "amt-prove-coset{}{}",
         coset,
         if mont { "-mont" } else { "" }
     );
-    file_name::<PE>(&prefix, depth)
+    file_name::<PE>(&prefix, depth, Some(prove_depth))
 }
 
 pub fn amtp_verify_file_name<PE: Pairing>(
     depth: usize, verify_depth: usize, coset: usize,
 ) -> String {
-    let prefix = format!("amt-params-verify{}-coset{}", verify_depth, coset);
-    file_name::<PE>(&prefix, depth)
+    let prefix = format!("amt-verify-coset{}", coset);
+    file_name::<PE>(&prefix, depth, Some(verify_depth))
 }
 
 #[inline]
