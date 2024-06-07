@@ -1,7 +1,7 @@
 use ark_std::cfg_chunks_mut;
 use std::path::Path;
-use tracing::{info, instrument};
 
+#[cfg(not(feature = "cuda-bls12-381"))]
 use ark_bn254::Bn254;
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
@@ -13,7 +13,7 @@ use crate::{
     proofs::{AllProofs, AmtProofError, Proof},
     prove_params::AMTProofs,
     utils::{bitreverse, change_matrix_direction, index_reverse},
-    AMTParams, AMTVerifyParams,
+    AMTParams, AMTVerifyParams, PowerTau,
 };
 
 pub struct EncoderParams<
@@ -31,21 +31,24 @@ impl<
         const LOG_COL: usize,
         const LOG_ROW: usize,
     > EncoderParams<PE, COSET_N, LOG_COL, LOG_ROW>
-where
-    AMTParams<PE>: AMTProofs<PE = PE>,
+where AMTParams<PE>: AMTProofs<PE = PE>
 {
     pub fn new(amt_list: [AMTParams<PE>; COSET_N]) -> Self {
         Self::assert_validity();
         Self { amt_list }
     }
 
-    pub fn from_dir(dir: impl AsRef<Path> + Clone, create_mode: bool) -> Self {
+    pub fn from_dir(
+        dir: impl AsRef<Path> + Clone, create_mode: bool,
+        pp: Option<&PowerTau<PE>>,
+    ) -> Self {
         Self::from_builder(|coset| {
             AMTParams::from_dir(
                 dir.clone(),
                 LOG_COL + LOG_ROW,
                 coset,
                 create_mode,
+                pp,
             )
         })
     }
@@ -74,9 +77,7 @@ where
         );
     }
 
-    pub const fn len() -> usize {
-        1 << (LOG_COL + LOG_ROW)
-    }
+    pub const fn len() -> usize { 1 << (LOG_COL + LOG_ROW) }
 
     pub fn warmup(&self) {
         for amt in self.amt_list.iter() {
@@ -104,23 +105,27 @@ where
     }
 }
 
+#[cfg(not(feature = "cuda-bls12-381"))]
 impl<const COSET_N: usize, const LOG_COL: usize, const LOG_ROW: usize>
     EncoderParams<Bn254, COSET_N, LOG_COL, LOG_ROW>
 {
     #[instrument(skip_all, level = 3)]
     pub fn from_dir_mont(
         dir: impl AsRef<Path> + Clone, create_mode: bool,
+        pp: Option<&PowerTau<Bn254>>,
     ) -> Self {
         info!("Load AMT params");
 
-        Self::from_builder(|coset| {
+        let ans = Self::from_builder(|coset| {
             AMTParams::from_dir_mont(
                 dir.clone(),
                 LOG_COL + LOG_ROW,
-                create_mode,
                 coset,
+                create_mode,
+                pp,
             )
-        })
+        });
+        ans
     }
 }
 
@@ -156,8 +161,7 @@ pub struct HalfBlob<PE: Pairing, const LOG_COL: usize, const LOG_ROW: usize> {
 
 impl<PE: Pairing, const LOG_COL: usize, const LOG_ROW: usize>
     HalfBlob<PE, LOG_COL, LOG_ROW>
-where
-    AMTParams<PE>: AMTProofs<PE = PE>,
+where AMTParams<PE>: AMTProofs<PE = PE>
 {
     fn generate(mut points: Vec<Fr<PE>>, amt: &AMTParams<PE>) -> Self {
         index_reverse(&mut points);
@@ -232,13 +236,13 @@ impl<PE: Pairing, const LOG_COL: usize, const LOG_ROW: usize>
 
 #[cfg(test)]
 mod tests {
-    use ark_bn254::Bn254;
     use ark_ff::FftField;
     use ark_poly::Radix2EvaluationDomain;
     use once_cell::sync::Lazy;
 
     use crate::{
         ec_algebra::{Fr, UniformRand},
+        prove_params::tests::PP,
         utils::change_matrix_direction,
         AMTParams, VerifierParams,
     };
@@ -250,13 +254,27 @@ mod tests {
     const COSET_N: usize = 2;
 
     type TestEncoderContext = EncoderParams<PE, COSET_N, LOG_COL, LOG_ROW>;
-    type PE = Bn254;
-    static ENCODER: Lazy<TestEncoderContext> =
-        Lazy::new(|| TestEncoderContext::from_dir_mont("./pp", true));
+    #[cfg(not(feature = "cuda-bls12-381"))]
+    type PE = ark_bn254::Bn254;
+    #[cfg(feature = "cuda-bls12-381")]
+    type PE = ark_bls12_381::Bls12_381;
+
+    static ENCODER: Lazy<TestEncoderContext> = Lazy::new(|| {
+        #[cfg(not(feature = "cuda-bls12-381"))]
+        return TestEncoderContext::from_dir_mont("./pp", true, Some(&*PP));
+        #[cfg(feature = "cuda-bls12-381")]
+        return TestEncoderContext::from_dir("./pp", true, Some(&*PP));
+    });
 
     type TestVerifierContext = VerifierParams<PE, COSET_N, LOG_COL, LOG_ROW>;
-    static VERIFIER: Lazy<TestVerifierContext> =
-        Lazy::new(|| TestVerifierContext::from_dir_mont("./pp"));
+    static VERIFIER: Lazy<TestVerifierContext> = Lazy::new(|| {
+        // Guarantee encoder has complete before loading verifier
+        Lazy::force(&ENCODER);
+        #[cfg(not(feature = "cuda-bls12-381"))]
+        return TestVerifierContext::from_dir_mont("./pp");
+        #[cfg(feature = "cuda-bls12-381")]
+        return TestVerifierContext::from_dir("./pp");
+    });
 
     fn random_scalars(length: usize) -> Vec<Fr<PE>> {
         let mut rng = rand::thread_rng();

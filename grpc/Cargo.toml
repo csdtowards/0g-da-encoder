@@ -45,10 +45,10 @@ cuda = [ "zg-encoder/cuda" ]
 name = "encoder"
 harness = false
 
-[[bin]]
+[[bench]]
 name = "process_data"
-test = false
-bench = false
+harness = false
+
 
 [[bench]]
 name = "signer"

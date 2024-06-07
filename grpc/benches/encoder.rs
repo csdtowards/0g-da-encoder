@@ -65,7 +65,7 @@ fn encoder(data: &[u8], encoder_service: &EncoderService) -> EncodeBlobReply {
 }
 
 fn criterion_benchmark(c: &mut Criterion) {
-    let encoder_service = EncoderService::new("./pp");
+    let encoder_service = EncoderService::new_for_test("../crates/amt/pp");
     // generate input
     let seed = 222u64;
     let mut rng = StdRng::seed_from_u64(seed);

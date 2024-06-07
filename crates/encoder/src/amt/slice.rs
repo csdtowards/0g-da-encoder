@@ -38,9 +38,7 @@ impl EncodedSliceAMT {
         }
     }
 
-    pub(crate) fn index(&self) -> usize {
-        self.index
-    }
+    pub(crate) fn index(&self) -> usize { self.index }
 
     pub(crate) fn fields(&self) -> (G1Curve, Proof<PE>, G1Curve) {
         (
@@ -50,9 +48,7 @@ impl EncodedSliceAMT {
         )
     }
 
-    pub(crate) fn row(&self) -> Vec<Scalar> {
-        self.row.row.clone()
-    }
+    pub(crate) fn row(&self) -> Vec<Scalar> { self.row.row.clone() }
 
     pub(crate) fn verify(
         &self, encoder_amt: &ZgSignerParams, authoritative_commitment: &G1Curve,

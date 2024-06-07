@@ -22,7 +22,7 @@ fn signer(
 }
 
 fn criterion_benchmark(c: &mut Criterion) {
-    let param_dir = "./pp";
+    let param_dir = "../crates/amt/pp";
     let encoder_service = EncoderService::new(param_dir);
     let num_bytes = RAW_UNIT * BLOB_ROW_N * BLOB_COL_N;
     // generate input

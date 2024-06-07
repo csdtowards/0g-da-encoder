@@ -10,11 +10,20 @@ use once_cell::sync::Lazy;
 
 pub const TEST_LEVEL: usize = 8;
 pub const TEST_LENGTH: usize = 1 << TEST_LEVEL;
+
+#[cfg(not(feature = "cuda-bls12-381"))]
 pub type PE = ark_bn254::Bn254;
+#[cfg(feature = "cuda-bls12-381")]
+pub type PE = ark_bls12_381::Bls12_381;
+
 pub type TestParams = AMTParams<PE>;
 
+#[cfg(not(feature = "cuda-bls12-381"))]
 pub static PP: Lazy<PowerTau<PE>> =
     Lazy::new(|| PowerTau::<PE>::from_dir_mont("./pp", TEST_LEVEL, true));
+#[cfg(feature = "cuda-bls12-381")]
+pub static PP: Lazy<PowerTau<PE>> =
+    Lazy::new(|| PowerTau::<PE>::from_dir("./pp", TEST_LEVEL, true));
 
 pub static G1PP: Lazy<Vec<G1<PE>>> =
     Lazy::new(|| PP.g1pp.iter().copied().map(|x| G1::<PE>::from(x)).collect());

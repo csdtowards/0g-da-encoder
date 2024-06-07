@@ -8,15 +8,11 @@ pub type G1A = G1Affine;
 pub type G1Curve = G1Projective;
 pub type G2Curve = G2Projective;
 
-#[cfg(not(any(test, feature = "testonly_code")))]
-pub const BLOB_ROW_LOG: usize = 10;
-#[cfg(not(any(test, feature = "testonly_code")))]
-pub const BLOB_COL_LOG: usize = 10;
+const TEST_SETTING: bool = (cfg!(test) || cfg!(feature = "testonly_code"))
+    && !cfg!(feature = "production_mode");
 
-#[cfg(any(test, feature = "testonly_code"))]
-pub const BLOB_ROW_LOG: usize = 6;
-#[cfg(any(test, feature = "testonly_code"))]
-pub const BLOB_COL_LOG: usize = 5;
+pub const BLOB_ROW_LOG: usize = if TEST_SETTING { 6 } else { 10 };
+pub const BLOB_COL_LOG: usize = if TEST_SETTING { 5 } else { 10 };
 
 pub const COSET_N: usize = 3;
 

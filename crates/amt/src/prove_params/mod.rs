@@ -1,4 +1,5 @@
-pub mod fast_serde;
+#[cfg(not(feature = "cuda-bls12-381"))]
+pub mod fast_serde_bn254;
 mod generate;
 mod interfaces;
 mod prove;
@@ -8,7 +9,7 @@ mod serde;
 mod verify;
 
 #[cfg(test)]
-mod tests;
+pub mod tests;
 
 use crate::ec_algebra::{G1Aff, G2Aff, Pairing, G2};
 

@@ -1,5 +1,6 @@
 use std::path::Path;
 
+#[cfg(not(feature = "cuda-bls12-381"))]
 use ark_bn254::Bn254;
 
 use crate::{ec_algebra::Pairing, verify_params::AMTVerifyParams};
@@ -51,6 +52,7 @@ impl<
     }
 }
 
+#[cfg(not(feature = "cuda-bls12-381"))]
 impl<const COSET_N: usize, const LOG_COL: usize, const LOG_ROW: usize>
     VerifierParams<Bn254, COSET_N, LOG_COL, LOG_ROW>
 {

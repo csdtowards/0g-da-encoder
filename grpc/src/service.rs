@@ -16,7 +16,8 @@ pub use encoder::encoder_server::EncoderServer;
 use encoder::{encoder_server::Encoder, EncodeBlobReply, EncodeBlobRequest};
 
 use amt::{
-    ec_algebra::{CurveGroup, CanonicalSerialize}, EncoderParams, PowerTau, VerifierParams,
+    ec_algebra::{CanonicalSerialize, CurveGroup},
+    EncoderParams, PowerTau, VerifierParams,
 };
 use zg_encoder::{
     constants::{
@@ -32,7 +33,12 @@ pub struct EncoderService {
 
 impl EncoderService {
     pub fn new(param_dir: &str) -> Self {
-        let params = EncoderParams::from_dir_mont(param_dir, true);
+        let params = EncoderParams::from_dir_mont(param_dir, false, None);
+        Self { params }
+    }
+
+    pub fn new_for_test(param_dir: &str) -> Self {
+        let params = EncoderParams::from_dir_mont(param_dir, true, None);
         Self { params }
     }
 }
@@ -114,8 +120,8 @@ impl SignerService {
         &self, reply: EncodeBlobReply, encoded_data: &EncodedBlob,
     ) {
         use amt::ec_algebra::CanonicalDeserialize;
-        use zg_encoder::constants::G1Curve;
         use ark_bn254::{Fq, G1Affine, G1Projective};
+        use zg_encoder::constants::G1Curve;
         // deserialize
 
         let erasure_commitment: G1Projective = {
@@ -168,11 +174,13 @@ mod tests {
     use crate::{EncoderService, SignerService};
 
     use once_cell::sync::Lazy;
-    const PARAM_DIR: &str = "../pp";
+    const PARAM_DIR: &str = "../crate/amt/pp";
     static ENCODER_SERVICE: Lazy<EncoderService> =
-        Lazy::new(|| EncoderService::new(PARAM_DIR));
-    static SIGNER_SERVICE: Lazy<SignerService> =
-        Lazy::new(|| SignerService::new(PARAM_DIR));
+        Lazy::new(|| EncoderService::new_for_test(PARAM_DIR));
+    static SIGNER_SERVICE: Lazy<SignerService> = Lazy::new(|| {
+        Lazy::force(&ENCODER_SERVICE);
+        SignerService::new(PARAM_DIR)
+    });
 
     #[test_case(1 => Ok(()); "one sized data")]
     #[test_case(1234 => Ok(()); "normal sized data")]

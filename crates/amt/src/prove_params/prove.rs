@@ -10,8 +10,7 @@ use ark_ec::{CurveGroup, VariableBaseMSM};
 use tracing::instrument;
 
 impl<PE: Pairing> AMTParams<PE>
-where
-    G1<PE>: VariableBaseMSM<MulBase = G1Aff<PE>>,
+where G1<PE>: VariableBaseMSM<MulBase = G1Aff<PE>>
 {
     #[allow(unused)]
     pub(crate) fn commitment(&self, ri_data: &[Fr<PE>]) -> G1<PE> {
@@ -125,7 +124,7 @@ mod tests {
     use super::super::tests::{
         random_scalars, AMT, G2PP, PE, TEST_LENGTH, TEST_LEVEL,
     };
-    use crate::ec_algebra::{AffineRepr, Fr, Pairing};
+    use crate::ec_algebra::{AffineRepr, ArkPairing, Fr};
 
     #[test]
     fn test_commitment_tree() {

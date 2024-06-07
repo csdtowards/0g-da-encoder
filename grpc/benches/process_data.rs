@@ -34,9 +34,11 @@ fn init_logger() {
 fn main() {
     init_logger();
 
+    info!(current_dir = ?std::env::current_dir(), "Start");
+
     let start = Instant::now();
 
-    let params = ZgEncoderParams::from_dir_mont("./pp", false);
+    let params = ZgEncoderParams::from_dir_mont("../crates/amt/pp", true, None);
     println!("Load time elapsed {:?}", start.elapsed());
 
     params.warmup();

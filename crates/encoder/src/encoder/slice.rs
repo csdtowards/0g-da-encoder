@@ -87,9 +87,8 @@ impl EncodedSlice {
 }
 
 impl EncodedSlice {
-    pub fn row(&self) -> Vec<Scalar> {
-        self.amt.row()
-    }
+    pub fn row(&self) -> Vec<Scalar> { self.amt.row() }
+
     pub fn into_light_slice(&self) -> LightEncodedSlice {
         LightEncodedSlice::from_slice(self)
     }

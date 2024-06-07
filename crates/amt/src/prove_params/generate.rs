@@ -7,24 +7,26 @@ use crate::{
         Field, Fr, G1Aff, G2Aff, One, Pairing, Radix2EvaluationDomain, Zero,
         G1, G2,
     },
-    error, fast_serde,
+    error,
     power_tau::PowerTau,
     utils::{amtp_file_name, bitreverse, index_reverse},
 };
 
+#[cfg(not(feature = "cuda-bls12-381"))]
 use ark_bn254::Bn254;
+
 use ark_ec::CurveGroup;
 use ark_ff::FftField;
 use ark_std::cfg_iter_mut;
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
-use tracing::{debug, info, instrument, warn};
 
+#[cfg(not(feature = "cuda-bls12-381"))]
 impl AMTParams<Bn254> {
     #[instrument(skip_all, name = "load_amt_params", level = 2, parent = None, fields(depth=expected_depth, coset=coset))]
     pub fn from_dir_mont(
-        dir: impl AsRef<Path>, expected_depth: usize, create_mode: bool,
-        coset: usize,
+        dir: impl AsRef<Path>, expected_depth: usize, coset: usize,
+        create_mode: bool, pp: Option<&PowerTau<Bn254>>,
     ) -> Self {
         debug!(
             depth = expected_depth,
@@ -33,29 +35,35 @@ impl AMTParams<Bn254> {
         let file_name = amtp_file_name::<Bn254>(expected_depth, coset, true);
         let path = dir.as_ref().join(file_name);
 
-        if let Ok(params) = Self::load_cached_mont(&path) {
-            return params;
+        match Self::load_cached_mont(&path) {
+            Ok(loaded) => {
+                return loaded;
+            }
+            Err(e) => {
+                info!(?path, error = ?e, "Fail to load AMT params (mont format)");
+            }
         }
 
         if !create_mode {
             panic!("Fail to load amt params in mont from {:?}", path);
         }
 
-        info!("Fail to load AMT params (mont format)");
+        info!("Recover from unmont format");
 
-        let params = Self::from_dir(dir, expected_depth, coset, create_mode);
+        let params =
+            Self::from_dir(dir, expected_depth, coset, create_mode, pp);
 
         let writer = File::create(&*path).unwrap();
 
         info!(file = ?path, "Save generated AMT params (mont format)");
-        fast_serde::write_amt_params(&params, writer).unwrap();
+        crate::fast_serde_bn254::write_amt_params(&params, writer).unwrap();
 
         params
     }
 
     fn load_cached_mont(file: impl AsRef<Path>) -> Result<Self, error::Error> {
         let buffer = File::open(file)?;
-        Ok(fast_serde::read_amt_params(buffer)?)
+        Ok(crate::fast_serde_bn254::read_amt_params(buffer)?)
     }
 }
 
@@ -63,7 +71,7 @@ impl<PE: Pairing> AMTParams<PE> {
     #[instrument(skip_all, name = "load_amt_params", level = 2, parent = None, fields(depth=expected_depth, coset=coset))]
     pub fn from_dir(
         dir: impl AsRef<Path>, expected_depth: usize, coset: usize,
-        create_mode: bool,
+        create_mode: bool, pp: Option<&PowerTau<PE>>,
     ) -> Self {
         debug!(
             depth = expected_depth,
@@ -77,15 +85,20 @@ impl<PE: Pairing> AMTParams<PE> {
             return params;
         }
 
-        info!("Fail to load AMT params (unmont format)");
+        info!(?path, "Fail to load AMT params (unmont format)");
 
         if !create_mode {
             panic!("Fail to load amt params from {:?}", path);
         }
 
-        info!("Construct a new AMT params");
+        let pp = if let Some(pp) = pp {
+            info!("Recover AMT parameters with specified pp");
+            pp.clone()
+        } else {
+            info!("Recover AMT parameters by loading default pp");
+            PowerTau::<PE>::from_dir(dir, expected_depth, create_mode)
+        };
 
-        let pp = PowerTau::<PE>::from_dir(dir, expected_depth, create_mode);
         let params = Self::from_pp(pp, coset);
         let buffer = File::create(&path).unwrap();
 
@@ -102,9 +115,7 @@ impl<PE: Pairing> AMTParams<PE> {
         )?)
     }
 
-    pub fn len(&self) -> usize {
-        self.basis.len()
-    }
+    pub fn len(&self) -> usize { self.basis.len() }
 
     fn enact<T: CurveGroup>(input: Vec<T>) -> Vec<<T as CurveGroup>::Affine> {
         let mut affine = CurveGroup::normalize_batch(input.as_slice());
@@ -185,7 +196,8 @@ impl<PE: Pairing> AMTParams<PE> {
         g1pp: &[G1<PE>], fft_domain: &Radix2EvaluationDomain<Fr<PE>>,
     ) -> Vec<G1<PE>> {
         debug!("Generate basis");
-        fft_domain.ifft(g1pp)
+        // fft_domain.ifft(g1pp)
+        PE::fast_ifft(&fft_domain, &g1pp)
     }
 
     fn gen_quotients(
@@ -209,7 +221,9 @@ impl<PE: Pairing> AMTParams<PE> {
             coeff[i] = g1pp[max_coeff - i];
         }
 
-        let mut answer = fft_domain.fft(&coeff);
+        // let mut answer = fft_domain.fft(&coeff);
+        let mut answer = PE::fast_fft(&fft_domain, &coeff);
+
         cfg_iter_mut!(answer, 1024)
             .for_each(|val: &mut G1<PE>| *val *= fft_domain.size_inv);
         answer
@@ -253,8 +267,8 @@ mod tests {
         TestParams, DOMAIN, G1PP, G2PP, PE, PP, TEST_LENGTH, TEST_LEVEL, W,
     };
     use crate::ec_algebra::{
-        EvaluationDomain, Field, Fr, One, Pairing, VariableBaseMSM, Zero, G1,
-        G2,
+        ArkPairing, EvaluationDomain, Field, Fr, One, VariableBaseMSM, Zero,
+        G1, G2,
     };
 
     fn simple_gen_basis(index: usize) -> G1<PE> {

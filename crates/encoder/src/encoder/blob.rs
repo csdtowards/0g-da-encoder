@@ -48,21 +48,15 @@ impl EncodedBlob {
         EncodedSlice::new(index, amt, merkle)
     }
 
-    pub fn get_commitment(&self) -> G1Curve {
-        self.amt.get_commitment()
-    }
+    pub fn get_commitment(&self) -> G1Curve { self.amt.get_commitment() }
 
-    pub fn get_roots(&self) -> [Bytes32; COSET_N] {
-        self.merkle.root()
-    }
+    pub fn get_roots(&self) -> [Bytes32; COSET_N] { self.merkle.root() }
 
     pub fn get_file_root(&self) -> Bytes32 {
         compute_file_root(&self.get_roots())
     }
 
-    pub fn get_data(&self) -> &Vec<Bytes32> {
-        &self.merkle.data
-    }
+    pub fn get_data(&self) -> &Vec<Bytes32> { &self.merkle.data }
 }
 
 pub fn compute_file_root(roots: &[Bytes32; COSET_N]) -> Bytes32 {
@@ -247,9 +241,11 @@ mod tests {
     use test_case::test_case;
 
     static ENCODER: Lazy<ZgEncoderParams> =
-        Lazy::new(|| EncoderParams::from_dir_mont("../amt/pp", true));
-    static SIGNER: Lazy<ZgSignerParams> =
-        Lazy::new(|| VerifierParams::from_dir_mont("../amt/pp"));
+        Lazy::new(|| EncoderParams::from_dir_mont("../amt/pp", true, None));
+    static SIGNER: Lazy<ZgSignerParams> = Lazy::new(|| {
+        let _ = &*ENCODER;
+        VerifierParams::from_dir_mont("../amt/pp")
+    });
 
     fn gen_encoded_blob(num_bytes: usize) -> Result<EncodedBlob, EncoderError> {
         // generate input

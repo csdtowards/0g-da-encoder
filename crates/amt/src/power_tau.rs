@@ -3,8 +3,9 @@ use crate::{
         AffineRepr, CanonicalDeserialize, CanonicalSerialize, CurveGroup, Fr,
         G1Aff, G2Aff, Pairing, UniformRand, G1, G2,
     },
-    error, fast_serde, ptau_file_name,
+    error, ptau_file_name,
 };
+#[cfg(not(feature = "cuda-bls12-381"))]
 use ark_bn254::Bn254;
 use ark_ff::{utils::k_adicity, Field};
 use ark_std::cfg_into_iter;
@@ -113,10 +114,15 @@ impl<PE: Pairing> PowerTau<PE> {
         let file = &dir
             .as_ref()
             .join(ptau_file_name::<PE>(expected_depth, false));
-        if let Ok(loaded) = Self::from_dir_inner(file, expected_depth) {
-            return loaded;
+
+        match Self::from_dir_inner(file, expected_depth) {
+            Ok(loaded) => {
+                return loaded;
+            }
+            Err(e) => {
+                info!(path = ?file, error = ?e, "Fail to load powers of tau");
+            }
         }
-        info!("Fail to load powers of tau");
 
         if !create_mode {
             panic!(
@@ -145,6 +151,7 @@ impl<PE: Pairing> PowerTau<PE> {
     }
 }
 
+#[cfg(not(feature = "cuda-bls12-381"))]
 impl PowerTau<Bn254> {
     pub fn from_dir_mont(
         dir: impl AsRef<Path>, expected_depth: usize, create_mode: bool,
@@ -154,31 +161,38 @@ impl PowerTau<Bn254> {
         let path = dir
             .as_ref()
             .join(ptau_file_name::<Bn254>(expected_depth, true));
-        if let Ok(loaded) = Self::load_cached_mont(&path) {
-            return loaded;
+
+        match Self::load_cached_mont(&path) {
+            Ok(loaded) => {
+                return loaded;
+            }
+            Err(e) => {
+                info!(?path, error = ?e, "Fail to load powers of tau (mont format)");
+            }
         }
-        info!("Fail to load powers of tau (mont format)");
 
         if !create_mode {
             panic!(
-                "Fail to load public parameters for {} at depth {}, read TODO to generate",
+                "Fail to load public parameters for {} at depth {}",
                 std::any::type_name::<Bn254>(),
                 expected_depth
             );
         }
 
+        info!("Recover from unmont format");
+
         let pp = Self::from_dir(dir, expected_depth, create_mode);
         let writer = File::create(&*path).unwrap();
 
         info!(file = ?path, "Save generated AMT params (mont format)");
-        fast_serde::write_power_tau(&pp, writer).unwrap();
+        crate::fast_serde_bn254::write_power_tau(&pp, writer).unwrap();
 
         pp
     }
 
     fn load_cached_mont(file: impl AsRef<Path>) -> Result<Self, error::Error> {
         let buffer = File::open(file)?;
-        Ok(fast_serde::read_power_tau(buffer)?)
+        Ok(crate::fast_serde_bn254::read_power_tau(buffer)?)
     }
 }
 
@@ -211,7 +225,10 @@ impl<PE: Pairing> PowerTau<PE> {
 
 #[test]
 fn test_partial_load() {
+    #[cfg(not(feature = "cuda-bls12-381"))]
     type PE = ark_bn254::Bn254;
+    #[cfg(feature = "cuda-bls12-381")]
+    type PE = ark_bls12_381::Bls12_381;
 
     let tau = Fr::<PE>::rand(&mut rand::thread_rng());
     let large_pp = PowerTau::<PE>::setup_with_tau(tau, 8);
