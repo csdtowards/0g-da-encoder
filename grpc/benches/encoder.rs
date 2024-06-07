@@ -60,7 +60,7 @@ fn to_encoded_blob(
 }
 
 fn encoder(data: &[u8], encoder_service: &EncoderService) -> EncodeBlobReply {
-    let reply = encoder_service.process_data(data).unwrap();
+    let reply = encoder_service.process_data(data, true).unwrap();
     reply
 }
 

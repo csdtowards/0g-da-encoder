@@ -9,7 +9,7 @@ use crate::{
 use amt::Proof;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::cfg_iter;
-#[cfg(feature="parallel")]
+#[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
 #[derive(Debug, CanonicalSerialize, CanonicalDeserialize)]

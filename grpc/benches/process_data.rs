@@ -68,7 +68,7 @@ fn bench_all(params: ZgEncoderParams) {
 
     let start = Instant::now();
     for _ in 0..10 {
-        let reply = encoder.process_data(&data).unwrap();
+        let reply = encoder.process_data(&data, true).unwrap();
         std::hint::black_box(reply);
     }
     info!(time = ?start.elapsed(), "Time elapsed");

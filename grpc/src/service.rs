@@ -57,7 +57,7 @@ impl Encoder for EncoderService {
         );
 
         let reply = self
-            .process_data(&request_content.data)
+            .process_data(&request_content.data, request_content.require_data)
             .map_err(|e| Status::new(Code::Unknown, e))?;
 
         Ok(Response::new(reply))
@@ -67,7 +67,7 @@ impl Encoder for EncoderService {
 impl EncoderService {
     #[instrument(skip_all, name = "encode", level = 2)]
     pub fn process_data(
-        &self, data: &[u8],
+        &self, data: &[u8], require_data: bool,
     ) -> Result<EncodeBlobReply, EncoderError> {
         let raw_data: RawData = data.try_into()?;
         let raw_blob: RawBlob = raw_data.into();
@@ -82,10 +82,12 @@ impl EncoderService {
             answer
         };
         let storage_root = encoded_blob.get_file_root().to_vec();
-        let encoded_data = {
+        let encoded_data = if require_data {
             let data = encoded_blob.get_data();
             let ptr = &data[0][0] as *const u8;
             unsafe { std::slice::from_raw_parts(ptr, data.len() * 32).to_vec() }
+        } else {
+            vec![]
         };
 
         let encoded_slice: Vec<Vec<u8>> = cfg_into_iter!(0..BLOB_ROW_ENCODED)
@@ -195,7 +197,7 @@ mod tests {
             let mut data = vec![0u8; num_bytes];
             rng.fill(&mut data[..]);
             // serialize
-            let reply = ENCODER_SERVICE.process_data(&data)?;
+            let reply = ENCODER_SERVICE.process_data(&data, true)?;
             // ground truth
             let raw_data: RawData = data[..].try_into().unwrap();
             let raw_blob: RawBlob = raw_data.into();
