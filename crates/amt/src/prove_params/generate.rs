@@ -66,7 +66,7 @@ impl AMTParams<Bn254> {
 
     fn load_cached_mont(file: impl AsRef<Path>) -> Result<Self, error::Error> {
         let buffer = File::open(file)?;
-        Ok(crate::fast_serde_bn254::read_amt_params(buffer)?)
+        crate::fast_serde_bn254::read_amt_params(buffer)
     }
 }
 
@@ -115,6 +115,8 @@ impl<PE: Pairing> AMTParams<PE> {
         )?)
     }
 
+    pub fn is_empty(&self) -> bool { self.basis.is_empty() }
+
     pub fn len(&self) -> usize { self.basis.len() }
 
     fn enact<T: CurveGroup>(input: Vec<T>) -> Vec<<T as CurveGroup>::Affine> {
@@ -131,7 +133,7 @@ impl<PE: Pairing> AMTParams<PE> {
         assert!(idx < 1 << (two_adicity - depth));
         let pow = bitreverse(idx, two_adicity - depth);
 
-        <Fr<PE> as FftField>::TWO_ADIC_ROOT_OF_UNITY.pow(&[pow as u64])
+        <Fr<PE> as FftField>::TWO_ADIC_ROOT_OF_UNITY.pow([pow as u64])
     }
 
     pub fn from_pp(pp: PowerTau<PE>, prove_depth: usize, coset: usize) -> Self {
@@ -197,7 +199,7 @@ impl<PE: Pairing> AMTParams<PE> {
     ) -> Vec<G1<PE>> {
         debug!("Generate basis");
         // fft_domain.ifft(g1pp)
-        PE::fast_ifft(&fft_domain, &g1pp)
+        PE::fast_ifft(fft_domain, g1pp)
     }
 
     fn gen_quotients(
@@ -222,7 +224,7 @@ impl<PE: Pairing> AMTParams<PE> {
         }
 
         // let mut answer = fft_domain.fft(&coeff);
-        let mut answer = PE::fast_fft(&fft_domain, &coeff);
+        let mut answer = PE::fast_fft(fft_domain, &coeff);
 
         cfg_iter_mut!(answer, 1024)
             .for_each(|val: &mut G1<PE>| *val *= fft_domain.size_inv);

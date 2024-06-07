@@ -42,10 +42,10 @@ impl InputType {
     }
 }
 
-fn from_ppot_file_inner<'a>(
+fn from_ppot_file_inner(
     input_path: &str, input_type: InputType, file_size: usize,
     read_from: usize, read_size_pow: usize, chunk_size_pow: usize,
-    parameters: &'a CeremonyParams<Bn256>,
+    parameters: &CeremonyParams<Bn256>,
 ) -> Result<PowerTauLight, String> {
     use ark_std::cfg_iter;
     #[cfg(feature = "parallel")]
@@ -56,7 +56,7 @@ fn from_ppot_file_inner<'a>(
     let chunk_size = 1 << chunk_size_pow;
 
     if (read_from + read_size) > (1 << file_size) {
-        return Err(format!("too long to read"));
+        return Err("too long to read".into());
     }
 
     let input_filename =
@@ -180,7 +180,7 @@ pub fn load_save_power_tau(
         .as_ref()
         .join(ptau_file_name::<Bn254>(target_size_pow, false));
     std::fs::create_dir_all(Path::new(path).parent().unwrap()).unwrap();
-    let writer = File::create(&*path).unwrap();
+    let writer = File::create(path).unwrap();
     power_tau.serialize_compressed(writer).unwrap();
     // write_power_tau(&power_tau, writer).unwrap();
     Ok(())

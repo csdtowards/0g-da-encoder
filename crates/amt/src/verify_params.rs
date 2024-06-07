@@ -125,6 +125,7 @@ where G1<PE>: VariableBaseMSM<MulBase = G1Aff<PE>>
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn verify_amt_proof<PE: Pairing>(
     basis: &[G1Aff<PE>], vanishes: &[Vec<G2Aff<PE>>], ri_data: &[Fr<PE>],
     batch_index: usize, proof: &Proof<PE>, commitment: G1<PE>, g2: &G2<PE>,

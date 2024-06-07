@@ -40,12 +40,12 @@ impl EncodedSlice {
 
     pub(crate) fn check_merkle_idx(&self) -> Result<(), VerifierError> {
         if self.index != self.merkle.index() {
-            return Err(VerifierError::UnmatchedMerkleIndex {
+            Err(VerifierError::UnmatchedMerkleIndex {
                 row_index: self.index,
                 merkle_index: self.merkle.index(),
-            });
+            })
         } else {
-            return Ok(());
+            Ok(())
         }
     }
 
@@ -61,12 +61,12 @@ impl EncodedSlice {
 
     pub(crate) fn check_amt_idx(&self) -> Result<(), VerifierError> {
         if self.index != self.amt.index() {
-            return Err(VerifierError::UnmatchedAMTIndex {
+            Err(VerifierError::UnmatchedAMTIndex {
                 row_index: self.index,
                 amt_index: self.amt.index(),
-            });
+            })
         } else {
-            return Ok(());
+            Ok(())
         }
     }
 

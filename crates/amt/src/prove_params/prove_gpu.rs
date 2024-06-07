@@ -32,17 +32,14 @@ fn affine_size() -> usize {
 }
 
 impl AMTParams<PE> {
-    pub(crate) fn read_gpu_bases<'a>(
-        &'a self,
-    ) -> ReadGuard<'a, Option<MsmBasisOnDevice>> {
+    pub(crate) fn read_gpu_bases(
+        &self,
+    ) -> ReadGuard<'_, Option<MsmBasisOnDevice>> {
         let device_mem = self.device_mem.upgradable_read();
 
-        match &*device_mem {
-            Some(MsmBasisOnDevice(_)) => {
-                return LockGuard::downgrade(device_mem);
-            }
-            _ => {}
-        };
+        if let Some(MsmBasisOnDevice(_)) = &*device_mem {
+            return LockGuard::downgrade(device_mem);
+        }
 
         let mut device_mem = LockGuard::upgrade(device_mem);
 
@@ -82,7 +79,7 @@ impl AMTParams<PE> {
         assert_eq!(exponents.len(), input_len);
 
         let lines: Vec<_> = multiple_multiexp_mt(
-            &gpu_bases,
+            gpu_bases,
             &exponents,
             num_batches,
             WINDOW_SIZE,

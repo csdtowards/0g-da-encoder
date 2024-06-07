@@ -7,6 +7,7 @@ pub enum EncoderError {
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum VerifierError {
+    #[allow(clippy::upper_case_acronyms)]
     AMT(AmtError),
     Merkle(MerkleError),
     UnmatchedAMTIndex {
@@ -19,8 +20,8 @@ pub enum VerifierError {
     },
 }
 
-impl Into<String> for EncoderError {
-    fn into(self) -> String { format!("{:?}", self) }
+impl From<EncoderError> for String {
+    fn from(error: EncoderError) -> String { format!("{:?}", error) }
 }
 
 impl From<AmtError> for VerifierError {

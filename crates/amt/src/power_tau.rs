@@ -140,6 +140,7 @@ impl<PE: Pairing> PowerTau<PE> {
         pp
     }
 
+    #[allow(clippy::type_complexity)]
     pub fn into_projective(
         self,
     ) -> (Vec<G1<PE>>, Vec<G2<PE>>, Vec<G1<PE>>, Vec<G2<PE>>) {
@@ -192,7 +193,7 @@ impl PowerTau<Bn254> {
 
     fn load_cached_mont(file: impl AsRef<Path>) -> Result<Self, error::Error> {
         let buffer = File::open(file)?;
-        Ok(crate::fast_serde_bn254::read_power_tau(buffer)?)
+        crate::fast_serde_bn254::read_power_tau(buffer)
     }
 }
 

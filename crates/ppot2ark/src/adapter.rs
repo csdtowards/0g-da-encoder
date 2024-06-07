@@ -89,10 +89,7 @@ impl Adapter for ppot::G1Affine {
         if self.is_zero() {
             ark::G1Affine::zero()
         } else {
-            ark::G1Affine::new(
-                self.get_x().adapt(),
-                self.get_y().clone().adapt(),
-            )
+            ark::G1Affine::new(self.get_x().adapt(), self.get_y().adapt())
         }
     }
 }
@@ -104,10 +101,7 @@ impl Adapter for ppot::G2Affine {
         if self.is_zero() {
             ark::G2Affine::zero()
         } else {
-            ark::G2Affine::new(
-                self.get_x().adapt(),
-                self.get_y().clone().adapt(),
-            )
+            ark::G2Affine::new(self.get_x().adapt(), self.get_y().adapt())
         }
     }
 }

@@ -67,7 +67,7 @@ pub fn swap_bits(n: usize, lo: usize, hi: usize) -> usize {
     (lowest << hi) | next
 }
 
-pub fn index_reverse<T: Sync>(input: &mut Vec<T>) {
+pub fn index_reverse<T: Sync>(input: &mut [T]) {
     let n = input.len();
     assert!(n.is_power_of_two());
     let depth = ark_std::log2(n) as usize;
@@ -106,7 +106,7 @@ pub(crate) fn change_matrix_direction<T: Clone>(
     std::mem::swap(input, &mut output);
 }
 
-fn transpose_square_matrix<T>(input: &mut Vec<T>, k: usize) {
+fn transpose_square_matrix<T>(input: &mut [T], k: usize) {
     for i in 0..input.len() {
         let ri = swap_bits(i, k, k);
         if i < ri {

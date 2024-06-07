@@ -117,7 +117,7 @@ impl<const COSET_N: usize, const LOG_COL: usize, const LOG_ROW: usize>
     ) -> Self {
         info!("Load AMT params");
 
-        let ans = Self::from_builder(|coset| {
+        Self::from_builder(|coset| {
             AMTParams::from_dir_mont(
                 dir.clone(),
                 LOG_COL + LOG_ROW,
@@ -126,8 +126,7 @@ impl<const COSET_N: usize, const LOG_COL: usize, const LOG_ROW: usize>
                 create_mode,
                 pp,
             )
-        });
-        ans
+        })
     }
 }
 

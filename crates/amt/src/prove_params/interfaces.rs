@@ -39,7 +39,7 @@ impl AMTProofs for AMTParams<PE> {
     }
 
     fn warmup(&self) {
-        let _ = self.read_gpu_bases();
+        let _loaded = self.read_gpu_bases();
         ag_cuda_ec::init_local_workspace();
     }
 }

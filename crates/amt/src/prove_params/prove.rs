@@ -70,7 +70,7 @@ where G1<PE>: VariableBaseMSM<MulBase = G1Aff<PE>>
     pub(crate) fn build_high_commitment(
         &self, last_layer: &[G1<PE>],
     ) -> G1<PE> {
-        last_layer.into_iter().sum()
+        last_layer.iter().sum()
     }
 
     pub fn gen_prove_tree(
