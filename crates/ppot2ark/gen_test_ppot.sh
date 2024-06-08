@@ -19,7 +19,6 @@ degree=$1
 
 # 计算powers of tau的数量
 pot_size=$((2**degree))
-echo $pot_size
 
 # 克隆phase2-bn254库
 cargo install --git https://github.com/kobigurk/phase2-bn254.git --rev dd6b966 powersoftau --bin new_constrained --bin compute_constrained
@@ -34,4 +33,4 @@ compute_constrained data/challenge_$degree data/response_$degree $degree $pot_si
 echo "The BLAKE2b hash of the response file is:"
 b2sum data/response_$degree
 
-echo "Done! The response file contains the Powers of Tau parameters."
+echo "The response file contains the Powers of Tau parameters"
