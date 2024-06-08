@@ -19,6 +19,7 @@ ark-serialize = "0.4"
 
 once_cell = "1.19"
 ark-bn254 = "0.4"
+ark-bls12-381 = "0.4"
 parking_lot = { version = "0.12", optional = true }
 
 ag-types = { workspace = true, optional = true }

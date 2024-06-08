@@ -9,25 +9,31 @@ use crate::{
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use keccak_hash::keccak;
 
-#[derive(Debug, CanonicalSerialize, CanonicalDeserialize, PartialEq)]
+#[derive(Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct EncodedSliceMerkle {
     // index: 0, 1, ...,
     // BLOB_ROW_ENCODED
-    pub row: Vec<Bytes32>, // BLOB_COL_N
-    pub root: [Bytes32; COSET_N],
-    pub proof: Vec<Bytes32>,
-    pub leaf_index: usize,
-    pub leaf: Bytes32,
+    root: [Bytes32; COSET_N],
+    proof: Vec<Bytes32>,
+    leaf_index: usize,
+    leaf: Bytes32,
+}
+
+impl PartialEq for EncodedSliceMerkle {
+    fn eq(&self, other: &Self) -> bool {
+        self.root == other.root
+            && self.proof == other.proof
+            && self.leaf_index == other.leaf_index
+            && self.leaf == other.leaf
+    }
 }
 
 impl EncodedSliceMerkle {
-    pub(super) fn new(
-        row: Vec<Bytes32>, root: [Bytes32; COSET_N], proof: Vec<Bytes32>,
-        leaf_index: usize, leaf: Bytes32,
+    pub(crate) fn new(
+        root: [Bytes32; COSET_N], proof: Vec<Bytes32>, leaf_index: usize,
+        leaf: Bytes32,
     ) -> Self {
-        assert_eq!(row.len(), BLOB_COL_N);
         Self {
-            row,
             root,
             proof,
             leaf_index,
@@ -37,19 +43,21 @@ impl EncodedSliceMerkle {
 
     pub(crate) fn index(&self) -> usize { self.leaf_index }
 
-    pub(crate) fn row(&self) -> Vec<Bytes32> { self.row.clone() }
+    pub(crate) fn fields(&self) -> ([Bytes32; COSET_N], Vec<Bytes32>, Bytes32) {
+        (self.root, self.proof.clone(), self.leaf)
+    }
 
     pub(crate) fn verify(
-        &self, authoritative_root: &Bytes32,
+        &self, authoritative_root: &Bytes32, row: Vec<Bytes32>,
     ) -> Result<(), MerkleError> {
         // verify authoritative_root
         if compute_file_root(&self.root) != *authoritative_root {
             return Err(MerkleError::IncorrectRoot);
         }
         // verify row.len() (local)
-        if self.row.len() != BLOB_COL_N {
+        if row.len() != BLOB_COL_N {
             return Err(MerkleError::IncorrectSize {
-                actual: self.row.len(),
+                actual: row.len(),
                 expected: BLOB_COL_N,
             });
         }
@@ -62,7 +70,7 @@ impl EncodedSliceMerkle {
         }
 
         // verify Merkle local
-        let leaves = keccak_chunked(&self.row, 8);
+        let leaves = keccak_chunked(&row, 8);
 
         let mut last_layer = leaves;
         while last_layer.len() > 1 {

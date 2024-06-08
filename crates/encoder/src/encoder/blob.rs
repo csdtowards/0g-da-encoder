@@ -9,6 +9,9 @@ use crate::{
 };
 
 #[cfg(any(test, feature = "testonly_code"))]
+use crate::ZgSignerParams;
+
+#[cfg(any(test, feature = "testonly_code"))]
 use crate::{
     amt::blob::ErrCodeAMT, amt::error::AmtError, encoder::error::VerifierError,
     merkle::blob::ErrCodeMerkle, merkle::error::MerkleError,
@@ -108,7 +111,11 @@ pub fn gen_err_signer_map(index: usize) -> HashMap<ErrCode, VerifierError> {
       // ErrorSigner} amt
     err_signer_map.insert(
         ErrCode::AMT(ErrCodeAMT::WrongRow),
-        VerifierError::UnmatchedRow { row_index: index },
+        VerifierError::AMT(AmtError::IncorrectProof {
+            coset_index: index / BLOB_ROW_N,
+            amt_index: index % BLOB_ROW_N,
+            error: amt::AmtProofError::InconsistentCommitment,
+        }),
     );
     err_signer_map.insert(
         ErrCode::AMT(ErrCodeAMT::WrongIndex),
@@ -122,11 +129,15 @@ pub fn gen_err_signer_map(index: usize) -> HashMap<ErrCode, VerifierError> {
         ErrCode::AMT(ErrCodeAMT::WrongCommitment),
         VerifierError::AMT(AmtError::IncorrectCommitment),
     );
-    // merkle
     err_signer_map.insert(
-        ErrCode::Merkle(ErrCodeMerkle::WrongRow),
-        VerifierError::UnmatchedRow { row_index: index },
+        ErrCode::AMT(ErrCodeAMT::IncorrectHighCommitment),
+        VerifierError::AMT(AmtError::IncorrectProof {
+            coset_index: index / BLOB_ROW_N,
+            amt_index: index % BLOB_ROW_N,
+            error: amt::AmtProofError::FailedLowDegreeTest,
+        }),
     );
+    // merkle
     err_signer_map.insert(
         ErrCode::Merkle(ErrCodeMerkle::WrongIndex),
         VerifierError::UnmatchedMerkleIndex {
@@ -182,7 +193,7 @@ impl EncodedBlob {
     }
 
     #[cfg(any(test, feature = "testonly_code"))]
-    pub fn test_verify(&self, encoder_amt: &ZgEncoderParams) {
+    pub fn test_verify(&self, encoder_amt: &ZgSignerParams) {
         let authoritative_commitment = self.get_commitment();
         let authoritative_root = self.get_file_root();
 
@@ -218,16 +229,50 @@ impl EncodedBlob {
 mod tests {
     use super::EncodedBlob;
     use crate::{
-        constants::MAX_BLOB_SIZE, encoder::error::EncoderError,
-        raw_blob::RawBlob, raw_data::RawData, ZgEncoderParams,
+        constants::{BLOB_ROW_ENCODED, MAX_BLOB_SIZE},
+        encoder::error::EncoderError,
+        raw_blob::RawBlob,
+        raw_data::RawData,
+        ZgEncoderParams, ZgSignerParams,
     };
-    use amt::EncoderParams;
+    use amt::{EncoderParams, VerifierParams};
     use once_cell::sync::Lazy;
     use rand::{rngs::StdRng, Rng, SeedableRng};
     use test_case::test_case;
 
     static ENCODER: Lazy<ZgEncoderParams> =
-        Lazy::new(|| EncoderParams::from_dir("../amt/pp", true));
+        Lazy::new(|| EncoderParams::from_dir_mont("../amt/pp", true, None));
+    static SIGNER: Lazy<ZgSignerParams> = Lazy::new(|| {
+        let _ = &*ENCODER;
+        VerifierParams::from_dir_mont("../amt/pp")
+    });
+
+    fn gen_encoded_blob(num_bytes: usize) -> Result<EncodedBlob, EncoderError> {
+        // generate input
+        let seed = 222u64;
+        let mut rng = StdRng::seed_from_u64(seed);
+        let mut data = vec![0u8; num_bytes];
+        rng.fill(&mut data[..]);
+        // batcher
+        let raw_data: RawData = data[..].try_into()?;
+        let raw_blob: RawBlob = raw_data.try_into().unwrap();
+        let encoded_blob = EncodedBlob::build(&raw_blob, &ENCODER);
+        Ok(encoded_blob)
+    }
+
+    #[test]
+    fn test_light_slice() -> () {
+        let num_bytes = 1234;
+        let encoded_blob = gen_encoded_blob(num_bytes).unwrap();
+
+        for index in 0..BLOB_ROW_ENCODED {
+            let encoded_slice = encoded_blob.get_row(index);
+            let row = encoded_slice.amt_row();
+            let light_slice = encoded_slice.into_light_slice();
+            let encoded_slice_recovered = light_slice.into_slice(row);
+            assert_eq!(encoded_slice, encoded_slice_recovered);
+        }
+    }
 
     #[test_case(0 => Ok(()); "zero sized data")]
     #[test_case(1 => Ok(()); "one sized data")]
@@ -235,18 +280,9 @@ mod tests {
     #[test_case(MAX_BLOB_SIZE => Ok(()); "exact sized data")]
     #[test_case(MAX_BLOB_SIZE + 1 => Err(EncoderError::TooLargeBlob { actual: MAX_BLOB_SIZE + 1, expected_max: MAX_BLOB_SIZE }); "overflow sized data")]
     fn test_batcher_and_verify(num_bytes: usize) -> Result<(), EncoderError> {
-        // generate input
-        let seed = 222u64;
-        let mut rng = StdRng::seed_from_u64(seed);
-        let mut data = vec![0u8; num_bytes];
-        rng.fill(&mut data[..]);
+        let encoded_blob = gen_encoded_blob(num_bytes)?;
 
-        // batcher
-        let raw_data: RawData = data[..].try_into()?;
-        let raw_blob: RawBlob = raw_data.try_into().unwrap();
-        let encoded_blob = EncodedBlob::build(&raw_blob, &ENCODER);
-
-        encoded_blob.test_verify(&ENCODER);
+        encoded_blob.test_verify(&SIGNER);
 
         Ok(())
     }

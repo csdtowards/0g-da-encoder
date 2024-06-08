@@ -81,6 +81,9 @@ impl EncodedBlobAMT {
             ErrCodeAMT::WrongCommitment => {
                 commitment = commitment + G1A::generator()
             } /* TODO WrongProof has not been tested */
+            ErrCodeAMT::IncorrectHighCommitment => {
+                row.high_commitment = row.high_commitment + G1A::generator()
+            }
         }
         EncodedSliceAMT::new(index, commitment, row)
     }
@@ -92,4 +95,5 @@ pub enum ErrCodeAMT {
     WrongIndex,
     WrongRow,
     WrongCommitment,
+    IncorrectHighCommitment,
 }

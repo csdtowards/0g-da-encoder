@@ -116,6 +116,7 @@ dependencies = [
  "ag-cuda-ec",
  "ag-types",
  "anyhow",
+ "ark-bls12-381",
  "ark-bn254",
  "ark-ec",
  "ark-ff",
@@ -1216,6 +1217,7 @@ dependencies = [
  "clap 3.2.25",
  "config 0.14.0",
  "criterion",
+ "once_cell",
  "prost",
  "rand 0.8.5",
  "rayon",
@@ -1996,6 +1998,7 @@ name = "ppot2ark"
 version = "0.1.0"
 dependencies = [
  "amt",
+ "anyhow",
  "ark-bn254",
  "ark-ec",
  "ark-ff",
@@ -2005,6 +2008,10 @@ dependencies = [
  "memmap",
  "powersoftau",
  "project-root",
+ "rayon",
+ "tracing",
+ "tracing-subscriber",
+ "zg-encoder",
 ]
 
 [[package]]

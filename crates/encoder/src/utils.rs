@@ -13,8 +13,7 @@ pub fn raw_unit_to_scalar(chunk: &[u8]) -> Scalar {
 
 pub fn scalar_to_h256(scalar: Scalar) -> [u8; 32] {
     let bytes: [u64; 4] = MontConfig::into_bigint(scalar).0;
-    let raw = unsafe { std::mem::transmute::<_, [u8; 32]>(bytes) };
-    raw
+    unsafe { std::mem::transmute::<_, [u8; 32]>(bytes) }
 }
 
 #[macro_export]

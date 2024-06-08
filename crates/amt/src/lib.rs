@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate tracing;
+
 mod blob;
 pub mod ec_algebra;
 mod error;
@@ -12,7 +15,10 @@ pub use blob::{
     verify::VerifierParams,
 };
 pub use power_tau::PowerTau;
-pub use proofs::AmtProofError;
-pub use prove_params::{fast_serde, AMTParams};
-pub use utils::{amtp_file_name, amtp_verify_file_name, pp_file_name};
+pub use proofs::{AmtProofError, Proof};
+pub use prove_params::AMTParams;
+pub use utils::{amtp_file_name, amtp_verify_file_name, ptau_file_name};
 pub use verify_params::AMTVerifyParams;
+
+#[cfg(not(feature = "cuda-bls12-381"))]
+pub use prove_params::fast_serde_bn254;

@@ -9,7 +9,8 @@
 // repo should import from here.
 
 pub use ark_ec::{
-    pairing::Pairing, AffineRepr, CurveGroup, Group, VariableBaseMSM,
+    pairing::Pairing as ArkPairing, AffineRepr, CurveGroup, Group,
+    VariableBaseMSM,
 };
 pub use ark_ff::{
     utils::k_adicity, BigInt, BigInteger, FftField, Field, One, PrimeField,
@@ -20,12 +21,76 @@ pub use ark_serialize::{
     CanonicalDeserialize, CanonicalSerialize, Read, SerializationError, Write,
 };
 
-pub type G1<PE> = <PE as Pairing>::G1;
-pub type G1Aff<PE> = <PE as Pairing>::G1Affine;
-pub type G2<PE> = <PE as Pairing>::G2;
-pub type G2Aff<PE> = <PE as Pairing>::G2Affine;
-pub type Fr<PE> = <PE as Pairing>::ScalarField;
-pub type Fq<PE> = <PE as Pairing>::BaseField;
+pub type G1<PE> = <PE as ark_ec::pairing::Pairing>::G1;
+pub type G1Aff<PE> = <PE as ark_ec::pairing::Pairing>::G1Affine;
+pub type G2<PE> = <PE as ark_ec::pairing::Pairing>::G2;
+pub type G2Aff<PE> = <PE as ark_ec::pairing::Pairing>::G2Affine;
+pub type Fr<PE> = <PE as ark_ec::pairing::Pairing>::ScalarField;
+pub type Fq<PE> = <PE as ark_ec::pairing::Pairing>::BaseField;
 pub type FrInt<PE> = <Fr<PE> as PrimeField>::BigInt;
 pub type FqInt<PE> = <Fq<PE> as PrimeField>::BigInt;
 pub type Fq2<PE> = <G2Aff<PE> as AffineRepr>::BaseField;
+
+pub trait Pairing: ark_ec::pairing::Pairing {
+    fn fast_fft(
+        fft_domain: &Radix2EvaluationDomain<Fr<Self>>, input: &[G1<Self>],
+    ) -> Vec<G1<Self>> {
+        fft_domain.fft(input)
+    }
+
+    fn fast_ifft(
+        fft_domain: &Radix2EvaluationDomain<Fr<Self>>, input: &[G1<Self>],
+    ) -> Vec<G1<Self>> {
+        fft_domain.ifft(input)
+    }
+}
+
+#[cfg(not(feature = "cuda"))]
+impl<PE: ark_ec::pairing::Pairing> Pairing for PE {}
+
+#[cfg(feature = "cuda")]
+mod cuda_accelerate {
+    use super::{Fr, Pairing, G1};
+    use ag_cuda_ec::{ec_fft::radix_ec_fft_mt, pairing_suite::PE};
+    use ark_ff::Field;
+    use ark_std::{cfg_iter_mut, Zero};
+
+    #[cfg(feature = "parallel")]
+    use rayon::prelude::*;
+
+    fn make_omegas(group_gen: Fr<PE>) -> Vec<Fr<PE>> {
+        let mut omegas = vec![Fr::<PE>::zero(); 32];
+        omegas[0] = group_gen;
+        for i in 1..32 {
+            omegas[i] = omegas[i - 1].square();
+        }
+        omegas
+    }
+
+    impl Pairing for PE {
+        fn fast_fft(
+            fft_domain: &ark_poly::Radix2EvaluationDomain<Fr<Self>>,
+            input: &[G1<Self>],
+        ) -> Vec<G1<Self>> {
+            let mut answer = input.to_vec();
+            radix_ec_fft_mt(&mut answer, &make_omegas(fft_domain.group_gen))
+                .unwrap();
+            answer
+        }
+
+        fn fast_ifft(
+            fft_domain: &ark_poly::Radix2EvaluationDomain<Fr<Self>>,
+            input: &[G1<Self>],
+        ) -> Vec<G1<Self>> {
+            let mut answer = input.to_vec();
+            radix_ec_fft_mt(
+                &mut answer,
+                &make_omegas(fft_domain.group_gen_inv),
+            )
+            .unwrap();
+            cfg_iter_mut!(answer, 1024)
+                .for_each(|val: &mut G1<PE>| *val *= fft_domain.size_inv);
+            answer
+        }
+    }
+}

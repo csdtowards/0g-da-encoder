@@ -17,30 +17,38 @@ pub(crate) fn type_hash<T: Any>() -> String {
     BASE64_STANDARD.encode(s.finish().to_be_bytes())
 }
 
-fn file_name<PE: Pairing>(prefix: &str, depth: usize) -> String {
-    format!("{}-{}-{:02}.bin", prefix, &type_hash::<PE>()[..6], depth)
+fn file_name<PE: Pairing>(
+    prefix: &str, depth: usize, sub_depth: Option<usize>,
+) -> String {
+    let suffix = if let Some(x) = sub_depth {
+        format!("{:02}-{:02}.bin", x, depth)
+    } else {
+        format!("{:02}.bin", depth)
+    };
+    format!("{}-{}-{}", prefix, &type_hash::<PE>()[..6], suffix)
 }
 
-pub fn pp_file_name<PE: Pairing>(depth: usize) -> String {
-    file_name::<PE>("power-tau", depth)
+pub fn ptau_file_name<PE: Pairing>(depth: usize, mont: bool) -> String {
+    let prefix = format!("power-tau{}", if mont { "-mont" } else { "" });
+    file_name::<PE>(&prefix, depth, None)
 }
 
 pub fn amtp_file_name<PE: Pairing>(
-    depth: usize, coset: usize, mont: bool,
+    depth: usize, prove_depth: usize, coset: usize, mont: bool,
 ) -> String {
     let prefix = format!(
-        "amt-params-coset{}{}",
+        "amt-prove-coset{}{}",
         coset,
         if mont { "-mont" } else { "" }
     );
-    file_name::<PE>(&prefix, depth)
+    file_name::<PE>(&prefix, depth, Some(prove_depth))
 }
 
 pub fn amtp_verify_file_name<PE: Pairing>(
     depth: usize, verify_depth: usize, coset: usize,
 ) -> String {
-    let prefix = format!("amt-params-verify{}-coset{}", verify_depth, coset,);
-    file_name::<PE>(&prefix, depth)
+    let prefix = format!("amt-verify-coset{}", coset);
+    file_name::<PE>(&prefix, depth, Some(verify_depth))
 }
 
 #[inline]
@@ -59,7 +67,7 @@ pub fn swap_bits(n: usize, lo: usize, hi: usize) -> usize {
     (lowest << hi) | next
 }
 
-pub fn index_reverse<T: Sync>(input: &mut Vec<T>) {
+pub fn index_reverse<T: Sync>(input: &mut [T]) {
     let n = input.len();
     assert!(n.is_power_of_two());
     let depth = ark_std::log2(n) as usize;
@@ -98,7 +106,7 @@ pub(crate) fn change_matrix_direction<T: Clone>(
     std::mem::swap(input, &mut output);
 }
 
-fn transpose_square_matrix<T>(input: &mut Vec<T>, k: usize) {
+fn transpose_square_matrix<T>(input: &mut [T], k: usize) {
     for i in 0..input.len() {
         let ri = swap_bits(i, k, k);
         if i < ri {

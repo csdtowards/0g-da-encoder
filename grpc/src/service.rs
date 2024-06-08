@@ -15,12 +15,16 @@ pub mod encoder {
 pub use encoder::encoder_server::EncoderServer;
 use encoder::{encoder_server::Encoder, EncodeBlobReply, EncodeBlobRequest};
 
-use amt::{ec_algebra::{CanonicalSerialize, CurveGroup}, EncoderParams, PowerTau};
+use amt::{
+    ec_algebra::{CanonicalSerialize, CurveGroup},
+    EncoderParams, PowerTau, VerifierParams,
+};
 use zg_encoder::{
     constants::{
         Scalar, BLOB_COL_LOG, BLOB_ROW_ENCODED, BLOB_ROW_LOG, COSET_N, PE,
     },
     EncodedBlob, EncodedSlice, EncoderError, RawBlob, RawData, ZgEncoderParams,
+    ZgSignerParams,
 };
 
 pub struct EncoderService {
@@ -29,7 +33,12 @@ pub struct EncoderService {
 
 impl EncoderService {
     pub fn new(param_dir: &str) -> Self {
-        let params = EncoderParams::from_dir_mont(param_dir, true);
+        let params = EncoderParams::from_dir_mont(param_dir, false, None);
+        Self { params }
+    }
+
+    pub fn new_for_test(param_dir: &str) -> Self {
+        let params = EncoderParams::from_dir_mont(param_dir, true, None);
         Self { params }
     }
 }
@@ -48,7 +57,7 @@ impl Encoder for EncoderService {
         );
 
         let reply = self
-            .process_data(&request_content.data)
+            .process_data(&request_content.data, request_content.require_data)
             .map_err(|e| Status::new(Code::Unknown, e))?;
 
         Ok(Response::new(reply))
@@ -58,7 +67,7 @@ impl Encoder for EncoderService {
 impl EncoderService {
     #[instrument(skip_all, name = "encode", level = 2)]
     pub fn process_data(
-        &self, data: &[u8],
+        &self, data: &[u8], require_data: bool,
     ) -> Result<EncodeBlobReply, EncoderError> {
         let raw_data: RawData = data.try_into()?;
         let raw_blob: RawBlob = raw_data.into();
@@ -73,10 +82,12 @@ impl EncoderService {
             answer
         };
         let storage_root = encoded_blob.get_file_root().to_vec();
-        let encoded_data = {
+        let encoded_data = if require_data {
             let data = encoded_blob.get_data();
             let ptr = &data[0][0] as *const u8;
             unsafe { std::slice::from_raw_parts(ptr, data.len() * 32).to_vec() }
+        } else {
+            vec![]
         };
 
         let encoded_slice: Vec<Vec<u8>> = cfg_into_iter!(0..BLOB_ROW_ENCODED)
@@ -92,19 +103,34 @@ impl EncoderService {
         };
         Ok(reply)
     }
+}
 
-    #[cfg(test)]
-    pub fn deserialize_reply(&self, reply: EncodeBlobReply, data: &[u8]) {
-        use amt::ec_algebra::{AffineRepr, CanonicalDeserialize};
-        use ark_bn254::{Fq, G1Affine};
+pub struct SignerService {
+    pub params: ZgSignerParams,
+}
+
+impl SignerService {
+    pub fn new(param_dir: &str) -> Self {
+        let params = VerifierParams::from_dir_mont(param_dir);
+        Self { params }
+    }
+}
+
+#[cfg(test)]
+impl SignerService {
+    pub fn deserialize_reply(
+        &self, reply: EncodeBlobReply, encoded_data: &EncodedBlob,
+    ) {
+        use amt::ec_algebra::CanonicalDeserialize;
+        use ark_bn254::{Fq, G1Affine, G1Projective};
         use zg_encoder::constants::G1Curve;
         // deserialize
 
-        let erasure_commitment = {
+        let erasure_commitment: G1Projective = {
             let mut raw_commitment = &*reply.erasure_commitment;
             let x = Fq::deserialize_uncompressed(&mut raw_commitment).unwrap();
             let y = Fq::deserialize_uncompressed(&mut raw_commitment).unwrap();
-            G1Affine::new(x, y).into_group()
+            G1Affine::new(x, y).into()
         };
 
         let storage_root =
@@ -122,9 +148,6 @@ impl EncoderService {
             })
             .collect();
         // test consistency
-        let raw_data: RawData = data.try_into().unwrap();
-        let raw_blob: RawBlob = raw_data.into();
-        let encoded_data = EncodedBlob::build(&raw_blob, &self.params);
         assert_eq!(erasure_commitment, encoded_data.get_commitment());
         assert_eq!(storage_root, encoded_data.get_file_root());
         assert_eq!(encoded_data.get_data().len(), encoded_data_h256.len());
@@ -146,9 +169,21 @@ fn serailize_to_bytes<T: CanonicalSerialize>(data: &T) -> Vec<u8> {
 mod tests {
     use rand::{rngs::StdRng, Rng, SeedableRng};
     use test_case::test_case;
-    use zg_encoder::{constants::MAX_BLOB_SIZE, EncoderError, RawData};
+    use zg_encoder::{
+        constants::MAX_BLOB_SIZE, EncodedBlob, EncoderError, RawBlob, RawData,
+    };
 
-    use crate::EncoderService;
+    use crate::{EncoderService, SignerService};
+
+    use once_cell::sync::Lazy;
+    const PARAM_DIR: &str = "../crates/amt/pp";
+    static ENCODER_SERVICE: Lazy<EncoderService> =
+        Lazy::new(|| EncoderService::new_for_test(PARAM_DIR));
+    static SIGNER_SERVICE: Lazy<SignerService> = Lazy::new(|| {
+        Lazy::force(&ENCODER_SERVICE);
+        SignerService::new(PARAM_DIR)
+    });
+
     #[test_case(1 => Ok(()); "one sized data")]
     #[test_case(1234 => Ok(()); "normal sized data")]
     #[test_case(MAX_BLOB_SIZE => Ok(()); "exact sized data")]
@@ -157,16 +192,19 @@ mod tests {
         let seed = 22u64;
         let mut rng = StdRng::seed_from_u64(seed);
 
-        let encoder_service = EncoderService::new("../pp");
-
         for _ in 0..3 {
             // generate input
             let mut data = vec![0u8; num_bytes];
             rng.fill(&mut data[..]);
             // serialize
-            let reply = encoder_service.process_data(&data)?;
+            let reply = ENCODER_SERVICE.process_data(&data, true)?;
+            // ground truth
+            let raw_data: RawData = data[..].try_into().unwrap();
+            let raw_blob: RawBlob = raw_data.into();
+            let encoded_data =
+                EncodedBlob::build(&raw_blob, &ENCODER_SERVICE.params);
             // deserialize
-            encoder_service.deserialize_reply(reply, &data);
+            SIGNER_SERVICE.deserialize_reply(reply, &encoded_data);
         }
         Ok(())
     }

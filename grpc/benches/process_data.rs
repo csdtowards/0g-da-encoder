@@ -34,10 +34,12 @@ fn init_logger() {
 fn main() {
     init_logger();
 
+    info!(current_dir = ?std::env::current_dir(), "Start");
+
     let start = Instant::now();
 
-    let params = ZgEncoderParams::from_dir_mont("./pp", false);
-    println!("Load time elapsed {:?}", start.elapsed());
+    let params = ZgEncoderParams::from_dir_mont("../crates/amt/pp", true, None);
+    info!("Load time elapsed {:?}", start.elapsed());
 
     params.warmup();
 
@@ -66,7 +68,7 @@ fn bench_all(params: ZgEncoderParams) {
 
     let start = Instant::now();
     for _ in 0..10 {
-        let reply = encoder.process_data(&data).unwrap();
+        let reply = encoder.process_data(&data, true).unwrap();
         std::hint::black_box(reply);
     }
     info!(time = ?start.elapsed(), "Time elapsed");

@@ -60,12 +60,12 @@ fn to_encoded_blob(
 }
 
 fn encoder(data: &[u8], encoder_service: &EncoderService) -> EncodeBlobReply {
-    let reply = encoder_service.process_data(data).unwrap();
+    let reply = encoder_service.process_data(data, true).unwrap();
     reply
 }
 
 fn criterion_benchmark(c: &mut Criterion) {
-    let encoder_service = EncoderService::new("./pp");
+    let encoder_service = EncoderService::new_for_test("../crates/amt/pp");
     // generate input
     let seed = 222u64;
     let mut rng = StdRng::seed_from_u64(seed);

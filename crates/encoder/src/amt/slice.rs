@@ -4,13 +4,13 @@ use crate::{
         G1Curve, Scalar, BLOB_COL_LOG, BLOB_COL_N, BLOB_ROW_ENCODED,
         BLOB_ROW_LOG, BLOB_ROW_N, PE,
     },
-    ZgEncoderParams,
+    ZgSignerParams,
 };
-use amt::BlobRow;
+use amt::{BlobRow, Proof};
 use ark_ec::CurveGroup;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 
-#[derive(Debug, CanonicalSerialize, CanonicalDeserialize, PartialEq)]
+#[derive(Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct EncodedSliceAMT {
     pub index: usize, /* index: 0, 1, ..., BLOB_ROW_ENCODED - 1 */
     pub commitment: G1Curve,
@@ -18,8 +18,16 @@ pub struct EncodedSliceAMT {
                                                        * proof */
 }
 
+impl PartialEq for EncodedSliceAMT {
+    fn eq(&self, other: &Self) -> bool {
+        self.index == other.index
+            && self.commitment == other.commitment
+            && self.row == other.row
+    }
+}
+
 impl EncodedSliceAMT {
-    pub(super) fn new(
+    pub(crate) fn new(
         index: usize, commitment: G1Curve,
         row: BlobRow<PE, BLOB_COL_LOG, BLOB_ROW_LOG>,
     ) -> Self {
@@ -32,11 +40,18 @@ impl EncodedSliceAMT {
 
     pub(crate) fn index(&self) -> usize { self.index }
 
-    pub(crate) fn row(&self) -> Vec<Scalar> { self.row.row.clone() }
+    pub(crate) fn fields(&self) -> (G1Curve, Proof<PE>, G1Curve) {
+        (
+            self.commitment,
+            self.row.proof.clone(),
+            self.row.high_commitment,
+        )
+    }
+
+    pub(crate) fn row(&self) -> &Vec<Scalar> { &self.row.row }
 
     pub(crate) fn verify(
-        &self, encoder_amt: &ZgEncoderParams,
-        authoritative_commitment: &G1Curve,
+        &self, encoder_amt: &ZgSignerParams, authoritative_commitment: &G1Curve,
     ) -> Result<(), AmtError> {
         // verify authoritative_commitment
         if self.commitment.into_affine()

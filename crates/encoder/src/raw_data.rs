@@ -25,7 +25,7 @@ impl TryFrom<&[u8]> for RawData {
         let value_len = value.len();
         if value_len <= MAX_BLOB_SIZE {
             let mut array = vec![0u8; MAX_BLOB_SIZE];
-            array[..value_len].copy_from_slice(&value[..]);
+            array[..value_len].copy_from_slice(value);
             Ok(RawData(array))
         } else {
             Err(EncoderError::TooLargeBlob {

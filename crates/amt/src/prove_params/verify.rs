@@ -13,7 +13,7 @@ where G1<PE>: VariableBaseMSM<MulBase = G1Aff<PE>>
 {
     pub fn verify_proof(
         &self, ri_data: &[Fr<PE>], batch_index: usize, proof: &Proof<PE>,
-        commitment: G1<PE>,
+        high_commitment: G1<PE>, commitment: G1<PE>,
     ) -> Result<(), AmtProofError> {
         verify_amt_proof(
             &self.basis,
@@ -23,6 +23,8 @@ where G1<PE>: VariableBaseMSM<MulBase = G1Aff<PE>>
             proof,
             commitment,
             &self.g2,
+            high_commitment,
+            &self.high_g2,
         )
     }
 }

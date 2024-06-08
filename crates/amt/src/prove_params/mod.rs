@@ -1,4 +1,5 @@
-pub mod fast_serde;
+#[cfg(not(feature = "cuda-bls12-381"))]
+pub mod fast_serde_bn254;
 mod generate;
 mod interfaces;
 mod prove;
@@ -8,7 +9,7 @@ mod serde;
 mod verify;
 
 #[cfg(test)]
-mod tests;
+pub mod tests;
 
 use crate::ec_algebra::{G1Aff, G2Aff, Pairing, G2};
 
@@ -21,6 +22,8 @@ pub struct AMTParams<PE: Pairing> {
     pub quotients: Vec<Vec<G1Aff<PE>>>,
     pub vanishes: Vec<Vec<G2Aff<PE>>>,
     pub g2: G2<PE>,
+    pub high_basis: Vec<G1Aff<PE>>,
+    pub high_g2: G2<PE>,
     #[cfg(feature = "cuda")]
     device_mem: RwLock<Option<prove_gpu::MsmBasisOnDevice>>,
 }
@@ -28,16 +31,30 @@ pub struct AMTParams<PE: Pairing> {
 impl<PE: Pairing> AMTParams<PE> {
     pub fn new(
         basis: Vec<G1Aff<PE>>, quotients: Vec<Vec<G1Aff<PE>>>,
-        vanishes: Vec<Vec<G2Aff<PE>>>, g2: G2<PE>,
+        vanishes: Vec<Vec<G2Aff<PE>>>, g2: G2<PE>, high_basis: Vec<G1Aff<PE>>,
+        high_g2: G2<PE>,
     ) -> Self {
         Self {
             basis,
             quotients,
             vanishes,
             g2,
+            high_basis,
+            high_g2,
             #[cfg(feature = "cuda")]
             device_mem: RwLock::new(None),
         }
+    }
+
+    pub fn reduce_prove_depth(&self, depth: usize) -> Self {
+        Self::new(
+            self.basis.clone(),
+            self.quotients[..depth].to_vec(),
+            self.vanishes[..depth].to_vec(),
+            self.g2,
+            self.high_basis.clone(),
+            self.high_g2,
+        )
     }
 }
 
@@ -47,6 +64,8 @@ impl<PE: Pairing> PartialEq for AMTParams<PE> {
             && self.quotients == other.quotients
             && self.vanishes == other.vanishes
             && self.g2 == other.g2
+            && self.high_basis == other.high_basis
+            && self.high_g2 == other.high_g2
     }
 }
 

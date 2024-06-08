@@ -1,7 +1,7 @@
 use ark_std::cfg_chunks_mut;
 use std::path::Path;
-use tracing::{info, instrument};
 
+#[cfg(not(feature = "cuda-bls12-381"))]
 use ark_bn254::Bn254;
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
@@ -13,7 +13,7 @@ use crate::{
     proofs::{AllProofs, AmtProofError, Proof},
     prove_params::AMTProofs,
     utils::{bitreverse, change_matrix_direction, index_reverse},
-    AMTParams,
+    AMTParams, AMTVerifyParams, PowerTau,
 };
 
 pub struct EncoderParams<
@@ -38,13 +38,18 @@ where AMTParams<PE>: AMTProofs<PE = PE>
         Self { amt_list }
     }
 
-    pub fn from_dir(dir: impl AsRef<Path> + Clone, create_mode: bool) -> Self {
+    pub fn from_dir(
+        dir: impl AsRef<Path> + Clone, create_mode: bool,
+        pp: Option<&PowerTau<PE>>,
+    ) -> Self {
         Self::from_builder(|coset| {
             AMTParams::from_dir(
                 dir.clone(),
                 LOG_COL + LOG_ROW,
-                create_mode,
+                LOG_ROW,
                 coset,
+                create_mode,
+                pp,
             )
         })
     }
@@ -77,7 +82,7 @@ where AMTParams<PE>: AMTProofs<PE = PE>
 
     pub fn warmup(&self) {
         for amt in self.amt_list.iter() {
-            AMTProofs::warmup(amt, LOG_COL);
+            AMTProofs::warmup(amt);
         }
     }
 
@@ -101,12 +106,14 @@ where AMTParams<PE>: AMTProofs<PE = PE>
     }
 }
 
+#[cfg(not(feature = "cuda-bls12-381"))]
 impl<const COSET_N: usize, const LOG_COL: usize, const LOG_ROW: usize>
     EncoderParams<Bn254, COSET_N, LOG_COL, LOG_ROW>
 {
     #[instrument(skip_all, level = 3)]
     pub fn from_dir_mont(
         dir: impl AsRef<Path> + Clone, create_mode: bool,
+        pp: Option<&PowerTau<Bn254>>,
     ) -> Self {
         info!("Load AMT params");
 
@@ -114,8 +121,10 @@ impl<const COSET_N: usize, const LOG_COL: usize, const LOG_ROW: usize>
             AMTParams::from_dir_mont(
                 dir.clone(),
                 LOG_COL + LOG_ROW,
-                create_mode,
+                LOG_ROW,
                 coset,
+                create_mode,
+                pp,
             )
         })
     }
@@ -157,7 +166,7 @@ where AMTParams<PE>: AMTProofs<PE = PE>
 {
     fn generate(mut points: Vec<Fr<PE>>, amt: &AMTParams<PE>) -> Self {
         index_reverse(&mut points);
-        let (commitment, proofs) = amt.gen_amt_proofs(&points, 1 << LOG_COL);
+        let (commitment, proofs) = amt.gen_amt_proofs(&points);
 
         index_reverse(&mut points);
         change_matrix_direction(&mut points, LOG_ROW, LOG_COL);
@@ -176,44 +185,67 @@ where AMTParams<PE>: AMTProofs<PE = PE>
         let row = self.blob[row_size * index..row_size * (index + 1)].to_vec();
 
         let reversed_index = bitreverse(index, LOG_ROW);
-        let proof = self.proofs.get_proof(reversed_index);
+        let (proof, high_commitment) = self.proofs.get_proof(reversed_index);
 
-        BlobRow::<PE, LOG_COL, LOG_ROW> { row, proof, index }
+        BlobRow::<PE, LOG_COL, LOG_ROW> {
+            row,
+            proof,
+            high_commitment,
+            index,
+        }
     }
 }
 
-#[derive(Debug, CanonicalSerialize, CanonicalDeserialize, PartialEq)]
+#[derive(Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct BlobRow<PE: Pairing, const LOG_COL: usize, const LOG_ROW: usize> {
     pub index: usize,
     pub row: Vec<Fr<PE>>,
     pub proof: Proof<PE>,
+    pub high_commitment: G1<PE>,
+}
+
+impl<PE: Pairing, const LOG_COL: usize, const LOG_ROW: usize> PartialEq
+    for BlobRow<PE, LOG_COL, LOG_ROW>
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.index == other.index
+            && self.row == other.row
+            && self.proof == other.proof
+            && self.high_commitment == other.high_commitment
+    }
 }
 
 impl<PE: Pairing, const LOG_COL: usize, const LOG_ROW: usize>
     BlobRow<PE, LOG_COL, LOG_ROW>
 {
     pub fn verify(
-        &self, amt: &AMTParams<PE>, commitment: G1<PE>,
+        &self, amt: &AMTVerifyParams<PE>, commitment: G1<PE>,
     ) -> Result<(), AmtProofError> {
         let mut data = self.row.clone();
 
         index_reverse(&mut data);
         let batch_index = bitreverse(self.index, LOG_ROW);
-        amt.verify_proof(&data, batch_index, &self.proof, commitment)
+        amt.verify_proof(
+            &data,
+            batch_index,
+            &self.proof,
+            self.high_commitment,
+            commitment,
+        )
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use ark_bn254::Bn254;
     use ark_ff::FftField;
     use ark_poly::Radix2EvaluationDomain;
     use once_cell::sync::Lazy;
 
     use crate::{
         ec_algebra::{Fr, UniformRand},
+        prove_params::tests::PP,
         utils::change_matrix_direction,
-        AMTParams,
+        AMTParams, VerifierParams,
     };
 
     use super::EncoderParams;
@@ -223,9 +255,27 @@ mod tests {
     const COSET_N: usize = 2;
 
     type TestEncoderContext = EncoderParams<PE, COSET_N, LOG_COL, LOG_ROW>;
-    type PE = Bn254;
-    static ENCODER: Lazy<TestEncoderContext> =
-        Lazy::new(|| TestEncoderContext::from_dir("./pp", true));
+    #[cfg(not(feature = "cuda-bls12-381"))]
+    type PE = ark_bn254::Bn254;
+    #[cfg(feature = "cuda-bls12-381")]
+    type PE = ark_bls12_381::Bls12_381;
+
+    static ENCODER: Lazy<TestEncoderContext> = Lazy::new(|| {
+        #[cfg(not(feature = "cuda-bls12-381"))]
+        return TestEncoderContext::from_dir_mont("./pp", true, Some(&*PP));
+        #[cfg(feature = "cuda-bls12-381")]
+        return TestEncoderContext::from_dir("./pp", true, Some(&*PP));
+    });
+
+    type TestVerifierContext = VerifierParams<PE, COSET_N, LOG_COL, LOG_ROW>;
+    static VERIFIER: Lazy<TestVerifierContext> = Lazy::new(|| {
+        // Guarantee encoder has complete before loading verifier
+        Lazy::force(&ENCODER);
+        #[cfg(not(feature = "cuda-bls12-381"))]
+        return TestVerifierContext::from_dir_mont("./pp");
+        #[cfg(feature = "cuda-bls12-381")]
+        return TestVerifierContext::from_dir("./pp");
+    });
 
     fn random_scalars(length: usize) -> Vec<Fr<PE>> {
         let mut rng = rand::thread_rng();
@@ -245,13 +295,13 @@ mod tests {
         for index in 0..(1 << LOG_ROW) {
             let commitment = primary_blob.commitment;
             let row = primary_blob.get_row(index);
-            row.verify(&ENCODER.amt_list[0], commitment).unwrap();
+            row.verify(&VERIFIER.amt_list[0], commitment).unwrap();
         }
 
         for index in 0..(1 << LOG_ROW) {
             let commitment = coset_blob.commitment;
             let row = coset_blob.get_row(index);
-            row.verify(&ENCODER.amt_list[1], commitment).unwrap();
+            row.verify(&VERIFIER.amt_list[1], commitment).unwrap();
         }
     }
 

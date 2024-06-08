@@ -4,7 +4,6 @@ use crate::{amtp_verify_file_name, error, AMTParams};
 
 use crate::ec_algebra::{Fr, G1Aff, G2Aff, Pairing, G1, G2};
 
-use ark_bn254::Bn254;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use tracing::{debug, info, instrument};
 
@@ -12,24 +11,30 @@ use crate::proofs::{AmtProofError, Proof};
 
 use ark_ec::VariableBaseMSM;
 
+#[cfg(not(feature = "cuda-bls12-381"))]
+use ark_bn254::Bn254;
+
 #[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct AMTVerifyParams<PE: Pairing> {
     pub basis: Vec<G1Aff<PE>>,
     pub vanishes: Vec<Vec<G2Aff<PE>>>,
     pub g2: G2<PE>,
+    pub high_g2: G2<PE>,
 }
 
+#[cfg(not(feature = "cuda-bls12-381"))]
 impl AMTVerifyParams<Bn254> {
     pub fn from_dir_mont(
-        dir: impl AsRef<Path>, expected_depth: usize, verify_depth: usize,
-        coset: usize,
+        dir: impl AsRef<Path>, depth: usize, verify_depth: usize, coset: usize,
     ) -> Self {
-        Self::from_dir_inner(&dir, expected_depth, verify_depth, coset, || {
+        Self::from_dir_inner(&dir, depth, verify_depth, coset, || {
             AMTParams::<Bn254>::from_dir_mont(
                 &dir,
-                expected_depth,
-                false,
+                depth,
+                verify_depth,
                 coset,
+                false,
+                None,
             )
         })
     }
@@ -41,7 +46,14 @@ impl<PE: Pairing> AMTVerifyParams<PE> {
         coset: usize,
     ) -> Self {
         Self::from_dir_inner(&dir, expected_depth, verify_depth, coset, || {
-            AMTParams::<PE>::from_dir(&dir, expected_depth, false, coset)
+            AMTParams::<PE>::from_dir(
+                &dir,
+                expected_depth,
+                verify_depth,
+                coset,
+                false,
+                None,
+            )
         })
     }
 
@@ -59,17 +71,21 @@ impl<PE: Pairing> AMTVerifyParams<PE> {
             amtp_verify_file_name::<PE>(expected_depth, verify_depth, coset);
         let path = dir.as_ref().join(file_name);
 
-        if let Ok(params) = Self::load_cached(&path) {
-            return params;
+        match Self::load_cached(&path) {
+            Ok(loaded) => {
+                return loaded;
+            }
+            Err(e) => {
+                info!(?path, error = ?e, "Fail to load AMT verify params, recover from AMT params");
+            }
         }
-
-        info!("Fail to load AMT verify params, recover from AMT params");
 
         let amt_params = make_prover_params();
         let verify_params = Self {
             basis: amt_params.basis.clone(),
             vanishes: amt_params.vanishes[0..verify_depth].to_vec(),
             g2: amt_params.g2,
+            high_g2: amt_params.high_g2,
         };
 
         let buffer = File::create(&path).unwrap();
@@ -93,7 +109,7 @@ where G1<PE>: VariableBaseMSM<MulBase = G1Aff<PE>>
 {
     pub fn verify_proof(
         &self, ri_data: &[Fr<PE>], batch_index: usize, proof: &Proof<PE>,
-        commitment: G1<PE>,
+        high_commitment: G1<PE>, commitment: G1<PE>,
     ) -> Result<(), AmtProofError> {
         verify_amt_proof(
             &self.basis,
@@ -103,13 +119,17 @@ where G1<PE>: VariableBaseMSM<MulBase = G1Aff<PE>>
             proof,
             commitment,
             &self.g2,
+            high_commitment,
+            &self.high_g2,
         )
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn verify_amt_proof<PE: Pairing>(
     basis: &[G1Aff<PE>], vanishes: &[Vec<G2Aff<PE>>], ri_data: &[Fr<PE>],
     batch_index: usize, proof: &Proof<PE>, commitment: G1<PE>, g2: &G2<PE>,
+    high_commitment: G1<PE>, high_g2: &G2<PE>,
 ) -> Result<(), AmtProofError>
 where
     G1<PE>: VariableBaseMSM<MulBase = G1Aff<PE>>,
@@ -144,7 +164,10 @@ where
         overall_commitment += commitment;
     }
     if overall_commitment != commitment {
-        Err(InconsistentCommitment)
+        return Err(InconsistentCommitment);
+    }
+    if PE::pairing(commitment, high_g2) != PE::pairing(high_commitment, g2) {
+        Err(FailedLowDegreeTest)
     } else {
         Ok(())
     }

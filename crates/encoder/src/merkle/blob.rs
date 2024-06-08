@@ -1,8 +1,6 @@
 use super::{slice::EncodedSliceMerkle, Bytes32};
 use crate::{
-    constants::{
-        BLOB_COL_N, BLOB_ROW_ENCODED, BLOB_ROW_LOG, COSET_N, ENCODED_BLOB_SIZE,
-    },
+    constants::{BLOB_ROW_ENCODED, BLOB_ROW_LOG, COSET_N, ENCODED_BLOB_SIZE},
     utils::keccak_chunked,
 };
 use std::collections::VecDeque;
@@ -46,9 +44,6 @@ impl EncodedBlobMerkle {
     pub fn get_row(&self, index: usize) -> EncodedSliceMerkle {
         assert!(index < BLOB_ROW_ENCODED);
 
-        let row: Vec<_> =
-            self.data[index * BLOB_COL_N..(index + 1) * BLOB_COL_N].to_vec();
-
         let proof = (1..=BLOB_ROW_LOG)
             .rev()
             .map(|d| {
@@ -58,13 +53,7 @@ impl EncodedBlobMerkle {
             })
             .collect();
 
-        EncodedSliceMerkle::new(
-            row,
-            self.root(),
-            proof,
-            index,
-            self.row_root(index),
-        )
+        EncodedSliceMerkle::new(self.root(), proof, index, self.row_root(index))
     }
 }
 
@@ -76,9 +65,6 @@ impl EncodedBlobMerkle {
         use ethereum_types::H256;
 
         assert!(index < BLOB_ROW_ENCODED);
-
-        let mut row: Vec<_> =
-            self.data[index * BLOB_COL_N..(index + 1) * BLOB_COL_N].to_vec();
 
         let mut proof: Vec<_> = (1..=BLOB_ROW_LOG)
             .rev()
@@ -92,10 +78,6 @@ impl EncodedBlobMerkle {
         let mut leaf = self.row_root(index);
         let mut root = self.root();
         match err_code {
-            ErrCodeMerkle::WrongRow => {
-                row[0] =
-                    H256::from_low_u64_be(H256(row[0]).to_low_u64_be() + 1).0
-            }
             ErrCodeMerkle::WrongIndex => leaf_index += 1,
             ErrCodeMerkle::WrongLocalRoot => {
                 leaf = H256::from_low_u64_be(H256(leaf).to_low_u64_be() + 1).0
@@ -110,14 +92,13 @@ impl EncodedBlobMerkle {
                 })
             }
         }
-        EncodedSliceMerkle::new(row, root, proof, leaf_index, leaf)
+        EncodedSliceMerkle::new(root, proof, leaf_index, leaf)
     }
 }
 
 #[cfg(any(test, feature = "testonly_code"))]
 #[derive(Debug, Eq, Hash, PartialEq)]
 pub enum ErrCodeMerkle {
-    WrongRow,
     WrongIndex,
     WrongLocalRoot,
     WrongProof,

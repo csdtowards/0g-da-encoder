@@ -10,20 +10,29 @@ use once_cell::sync::Lazy;
 
 pub const TEST_LEVEL: usize = 8;
 pub const TEST_LENGTH: usize = 1 << TEST_LEVEL;
+
+#[cfg(not(feature = "cuda-bls12-381"))]
 pub type PE = ark_bn254::Bn254;
+#[cfg(feature = "cuda-bls12-381")]
+pub type PE = ark_bls12_381::Bls12_381;
+
 pub type TestParams = AMTParams<PE>;
 
+#[cfg(not(feature = "cuda-bls12-381"))]
+pub static PP: Lazy<PowerTau<PE>> =
+    Lazy::new(|| PowerTau::<PE>::from_dir_mont("./pp", TEST_LEVEL, true));
+#[cfg(feature = "cuda-bls12-381")]
 pub static PP: Lazy<PowerTau<PE>> =
     Lazy::new(|| PowerTau::<PE>::from_dir("./pp", TEST_LEVEL, true));
 
 pub static G1PP: Lazy<Vec<G1<PE>>> =
-    Lazy::new(|| PP.0.iter().copied().map(|x| G1::<PE>::from(x)).collect());
+    Lazy::new(|| PP.g1pp.iter().copied().map(|x| G1::<PE>::from(x)).collect());
 
 pub static G2PP: Lazy<Vec<G2<PE>>> =
-    Lazy::new(|| PP.1.iter().copied().map(|x| G2::<PE>::from(x)).collect());
+    Lazy::new(|| PP.g2pp.iter().copied().map(|x| G2::<PE>::from(x)).collect());
 
 pub static AMT: Lazy<AMTParams<PE>> =
-    Lazy::new(|| AMTParams::from_pp(PP.clone(), 0));
+    Lazy::new(|| AMTParams::from_pp(PP.clone(), TEST_LEVEL, 0));
 
 pub static DOMAIN: Lazy<Radix2EvaluationDomain<Fr<PE>>> =
     Lazy::new(|| Radix2EvaluationDomain::new(TEST_LENGTH).unwrap());
