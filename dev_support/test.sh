@@ -8,7 +8,7 @@ echoStep() {
 
 ./dev_support/check_cuda.sh
 CUDA_TEST_EXITCODE=$?
-if [[ $CUDA_TEST_EXITCODE -ne 80 ]]; then
+if [[ $CUDA_TEST_EXITCODE -ne 0 ]]; then
     echo ""
     echo -e "    \033[1;33mCUDA Environment check fails, some CUDA related tests will be delete\033[0m"
     echo ""

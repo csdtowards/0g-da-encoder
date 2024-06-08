@@ -29,7 +29,20 @@ Note: GPU support is currently tested with NVIDIA 12.04 drivers on the RTX 4090.
      rustc --version
      ```
 
-2. **Install CUDA (for GPU feature)**:
+2. **Install other dependencies**:
+  ```bash
+  # Install Protocol Buffers Compiler
+  sudo apt-get install -y protobuf-compiler
+
+  # Install a specific nightly Rust toolchain and rustfmt
+  rustup toolchain install nightly-2024-02-04-x86_64-unknown-linux-gnu
+  rustup component add --toolchain nightly-2024-02-04-x86_64-unknown-linux-gnu rustfmt
+
+  # Add the necessary Rust target
+  rustup target add x86_64-unknown-linux-gnu
+  ```
+
+3. **Install CUDA (for GPU feature)**:
    - Ensure you have an NVIDIA GPU with the required drivers.
    - Following the instruction from [CUDA Toolkit](https://developer.nvidia.com/cuda-12-4-1-download-archive)
    - Verify the installation:
@@ -49,7 +62,9 @@ The public parameters for the cryptographic protocol are built in two steps:
 2. **Build the AMT parameters**:
    - The AMT uses the protocol described in the paper [LVMT](https://www.usenix.org/conference/osdi23/presentation/li-chenxing).
 
-You can either construct these parameters yourself or download pre-built files (TBA.) and place them in the `params` directory. The process is deterministic, so results should be the same for everyone.
+You can either construct these parameters yourself or download pre-built files (TBA.) and place them in the `params` directory. 
+
+The process is deterministic, and the sha2sum of generated files is list as follows.
 
 ```
 a132ba9fa48c338c478a3e9d7d1cde13d77c6096d3cca1ac28f091315ca58428  amt-prove-coset0-5DWgDV-10-20.bin
@@ -66,7 +81,7 @@ bc148cd9ce28f65a4bacbe174a232bee426afd32dfce73004ee38ca9afa46059  power-tau-5DWg
 
 To construct the parameters yourself, run the following command in the project root directory:
 ```sh
-./dev_support/build_params <path-to-challenge-0084>
+./dev_support/build_params.sh <path-to-challenge-0084>
 ```
 
 ## Running the Server
@@ -75,7 +90,10 @@ Run the server with the following command:
 ```sh
 cargo run -r -p server --features parallel,cuda -- --config run/config.toml
 ```
-The server will start on port `34000` ([service interface](grpc/proto)). If you do not have a CUDA environment, remove the `cuda` feature.
+If you do not have a CUDA environment, remove the `cuda` feature.
+
+DA Encoder will serve on port `34000` with specified [grpc interface](grpc/proto/encoder.proto). 
+
 
 ## Using the Verification Logic
 
@@ -88,7 +106,7 @@ Use the `zg_encoder::EncodedSlice::verify` function for verifing.
 ## Benchmark the Performance
 
 Run the following task
-```toml
+```bash
 cargo bench -p grpc --features grpc/parallel,grpc/cuda --bench process_data --features zg-encoder/production_mode -- --nocapture
 ```
 
