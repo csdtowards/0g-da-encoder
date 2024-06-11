@@ -1,13 +1,12 @@
 use crate::{
     constants::{
-        G1Curve, Scalar, BLOB_COL_LOG, BLOB_ROW_ENCODED, BLOB_ROW_LOG,
-        BLOB_ROW_N, COSET_N, PE, RAW_BLOB_SIZE,
+        Scalar, BLOB_COL_LOG, BLOB_ROW_ENCODED, BLOB_ROW_LOG, BLOB_ROW_N,
+        COSET_N, PE, RAW_BLOB_SIZE,
     },
     raw_blob::RawBlob,
     ZgEncoderParams,
 };
-use amt::HalfBlob;
-use ark_ec::CurveGroup;
+use amt::{ec_algebra::G1Aff, HalfBlob};
 use static_assertions::const_assert_eq;
 
 use super::slice::EncodedSliceAMT;
@@ -43,10 +42,7 @@ impl EncodedBlobAMT {
     fn assert_commitment_consistent(&self) {
         let primary = &self.0[0];
         for blob in self.0.iter().skip(1) {
-            assert_eq!(
-                primary.commitment.into_affine(),
-                blob.commitment.into_affine()
-            );
+            assert_eq!(primary.commitment, blob.commitment);
         }
     }
 
@@ -60,14 +56,14 @@ impl EncodedBlobAMT {
         )
     }
 
-    pub(crate) fn get_commitment(&self) -> G1Curve { self.0[0].commitment }
+    pub(crate) fn get_commitment(&self) -> G1Aff<PE> { self.0[0].commitment }
 
     #[cfg(any(test, feature = "testonly_code"))]
     pub(crate) fn get_invalid_row(
         &self, index: usize, err_code: &ErrCodeAMT,
     ) -> EncodedSliceAMT {
         use crate::constants::G1A;
-        use ark_ec::AffineRepr;
+        use ark_ec::{AffineRepr, CurveGroup};
         use ark_ff::One;
 
         assert!(index < BLOB_ROW_ENCODED);
@@ -79,10 +75,11 @@ impl EncodedBlobAMT {
             ErrCodeAMT::WrongIndex => row.index += 1,
             ErrCodeAMT::WrongRow => row.row[0] += Scalar::one(),
             ErrCodeAMT::WrongCommitment => {
-                commitment = commitment + G1A::generator()
+                commitment = (commitment + G1A::generator()).into_affine();
             } /* TODO WrongProof has not been tested */
             ErrCodeAMT::IncorrectHighCommitment => {
-                row.high_commitment = row.high_commitment + G1A::generator()
+                row.high_commitment =
+                    (row.high_commitment + G1A::generator()).into_affine()
             }
         }
         EncodedSliceAMT::new(index, commitment, row)

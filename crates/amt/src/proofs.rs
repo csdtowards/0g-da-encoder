@@ -2,7 +2,7 @@ use std::ops::Deref;
 
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 
-use crate::ec_algebra::{G1Aff, Pairing, G1};
+use crate::ec_algebra::{G1Aff, Pairing};
 
 #[derive(CanonicalSerialize, CanonicalDeserialize, Debug)]
 pub struct AllProofs<PE: Pairing> {
@@ -10,11 +10,11 @@ pub struct AllProofs<PE: Pairing> {
     pub(crate) proofs: Vec<Vec<G1Aff<PE>>>,
     pub(crate) input_len: usize,
     pub(crate) batch_size: usize,
-    pub(crate) high_commitment: G1<PE>,
+    pub(crate) high_commitment: G1Aff<PE>,
 }
 
 impl<PE: Pairing> AllProofs<PE> {
-    pub fn get_proof(&self, reversed_index: usize) -> (Proof<PE>, G1<PE>) {
+    pub fn get_proof(&self, reversed_index: usize) -> (Proof<PE>, G1Aff<PE>) {
         assert!(reversed_index * self.batch_size < self.input_len);
         let index_bits = self.commitments.len();
 

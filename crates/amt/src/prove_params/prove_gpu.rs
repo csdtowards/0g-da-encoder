@@ -113,7 +113,8 @@ impl AMTParams<PE> {
 
         assert_eq!(height, proofs.len());
 
-        let high_commitment = self.build_high_commitment(last_layer_ldt);
+        let high_commitment =
+            last_layer_ldt.iter().sum::<G1<PE>>().into_affine();
 
         let all_proofs = AllProofs {
             commitments,
@@ -160,7 +161,7 @@ mod tests {
                     &data,
                     index,
                     &proof,
-                    high_commitment,
+                    high_commitment.into(),
                     commitment,
                 )
                 .unwrap();
