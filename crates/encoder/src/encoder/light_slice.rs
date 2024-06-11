@@ -1,17 +1,19 @@
 use crate::{
     constants::{
-        G1Curve, Scalar, BLOB_COL_LOG, BLOB_ROW_LOG, BLOB_ROW_N, COSET_N, PE,
+        Scalar, BLOB_COL_LOG, BLOB_ROW_LOG, BLOB_ROW_N, COSET_N, G1A, PE,
     },
     merkle::Bytes32,
     EncodedSlice, EncodedSliceAMT, EncodedSliceMerkle,
 };
-use amt::{BlobRow, Proof};
+use amt::{ec_algebra::G1Aff, BlobRow, Proof};
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 
+#[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct LightEncodedSlice {
     pub index: usize,
-    pub amt_commitment: G1Curve,
+    pub amt_commitment: G1Aff<PE>,
     pub amt_proof: Proof<PE>,
-    pub amt_high_commitment: G1Curve,
+    pub amt_high_commitment: G1Aff<PE>,
     pub merkle_root: [Bytes32; COSET_N],
     pub merkle_proof: Vec<Bytes32>,
     pub merkle_leaf: Bytes32,
@@ -39,8 +41,8 @@ impl LightEncodedSlice {
 
 impl LightEncodedSlice {
     fn new(
-        index: usize, amt_commitment: G1Curve, amt_proof: Proof<PE>,
-        amt_high_commitment: G1Curve, merkle_root: [Bytes32; COSET_N],
+        index: usize, amt_commitment: G1A, amt_proof: Proof<PE>,
+        amt_high_commitment: G1A, merkle_root: [Bytes32; COSET_N],
         merkle_proof: Vec<Bytes32>, merkle_leaf: Bytes32,
     ) -> Self {
         Self {

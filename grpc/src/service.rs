@@ -75,7 +75,7 @@ impl EncoderService {
         let encoded_blob = EncodedBlob::build(&raw_blob, &self.params);
 
         let erasure_commitment = {
-            let c = encoded_blob.get_commitment().into_affine();
+            let c = encoded_blob.get_affine_commitment();
             let mut answer: Vec<u8> = Vec::new();
             c.x.serialize_uncompressed(&mut answer).unwrap();
             c.y.serialize_uncompressed(&mut answer).unwrap();

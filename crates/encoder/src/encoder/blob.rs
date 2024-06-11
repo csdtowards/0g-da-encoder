@@ -1,7 +1,7 @@
 use super::slice::EncodedSlice;
 use crate::{
     amt::blob::EncodedBlobAMT,
-    constants::{G1Curve, BLOB_ROW_ENCODED, COSET_N, RAW_BLOB_SIZE},
+    constants::{G1Curve, BLOB_ROW_ENCODED, COSET_N, G1A, RAW_BLOB_SIZE},
     merkle::{blob::EncodedBlobMerkle, Bytes32},
     raw_blob::RawBlob,
     utils::{keccak_tuple, scalar_to_h256},
@@ -48,7 +48,9 @@ impl EncodedBlob {
         EncodedSlice::new(index, amt, merkle)
     }
 
-    pub fn get_commitment(&self) -> G1Curve { self.amt.get_commitment() }
+    pub fn get_affine_commitment(&self) -> G1A { self.amt.get_commitment() }
+
+    pub fn get_commitment(&self) -> G1Curve { self.amt.get_commitment().into() }
 
     pub fn get_roots(&self) -> [Bytes32; COSET_N] { self.merkle.root() }
 

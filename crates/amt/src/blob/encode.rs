@@ -3,13 +3,14 @@ use std::path::Path;
 
 #[cfg(not(feature = "cuda-bls12-381"))]
 use ark_bn254::Bn254;
+use ark_ec::CurveGroup;
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
 use crate::{
-    ec_algebra::{FftField, Field, Fr, Pairing, G1},
+    ec_algebra::{FftField, Field, Fr, G1Aff, Pairing, G1},
     proofs::{AllProofs, AmtProofError, Proof},
     prove_params::AMTProofs,
     utils::{bitreverse, change_matrix_direction, index_reverse},
@@ -156,7 +157,7 @@ fn to_coset_blob<PE: Pairing>(data: &[Fr<PE>], coset: usize) -> Vec<Fr<PE>> {
 #[derive(Debug)]
 pub struct HalfBlob<PE: Pairing, const LOG_COL: usize, const LOG_ROW: usize> {
     pub blob: Vec<Fr<PE>>,
-    pub commitment: G1<PE>,
+    pub commitment: G1Aff<PE>,
     pub proofs: AllProofs<PE>,
 }
 
@@ -173,7 +174,7 @@ where AMTParams<PE>: AMTProofs<PE = PE>
 
         Self {
             blob: points,
-            commitment,
+            commitment: commitment.into_affine(),
             proofs,
         }
     }
@@ -201,7 +202,7 @@ pub struct BlobRow<PE: Pairing, const LOG_COL: usize, const LOG_ROW: usize> {
     pub index: usize,
     pub row: Vec<Fr<PE>>,
     pub proof: Proof<PE>,
-    pub high_commitment: G1<PE>,
+    pub high_commitment: G1Aff<PE>,
 }
 
 impl<PE: Pairing, const LOG_COL: usize, const LOG_ROW: usize> PartialEq
@@ -229,7 +230,7 @@ impl<PE: Pairing, const LOG_COL: usize, const LOG_ROW: usize>
             &data,
             batch_index,
             &self.proof,
-            self.high_commitment,
+            self.high_commitment.into(),
             commitment,
         )
     }
@@ -295,13 +296,15 @@ mod tests {
         for index in 0..(1 << LOG_ROW) {
             let commitment = primary_blob.commitment;
             let row = primary_blob.get_row(index);
-            row.verify(&VERIFIER.amt_list[0], commitment).unwrap();
+            row.verify(&VERIFIER.amt_list[0], commitment.into())
+                .unwrap();
         }
 
         for index in 0..(1 << LOG_ROW) {
             let commitment = coset_blob.commitment;
             let row = coset_blob.get_row(index);
-            row.verify(&VERIFIER.amt_list[1], commitment).unwrap();
+            row.verify(&VERIFIER.amt_list[1], commitment.into())
+                .unwrap();
         }
     }
 

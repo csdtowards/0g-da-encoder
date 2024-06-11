@@ -1,7 +1,7 @@
 use super::{error::VerifierError, light_slice::LightEncodedSlice};
 use crate::{
     amt::slice::EncodedSliceAMT,
-    constants::{G1Curve, Scalar, COSET_N, PE},
+    constants::{G1Curve, Scalar, COSET_N, G1A, PE},
     merkle::{slice::EncodedSliceMerkle, Bytes32},
     utils::scalar_to_h256,
     ZgSignerParams,
@@ -55,7 +55,7 @@ impl EncodedSlice {
         self.merkle.fields()
     }
 
-    pub(crate) fn amt_fields(&self) -> (G1Curve, Proof<PE>, G1Curve) {
+    pub(crate) fn amt_fields(&self) -> (G1A, Proof<PE>, G1A) {
         self.amt.fields()
     }
 

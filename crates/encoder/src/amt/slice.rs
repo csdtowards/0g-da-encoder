@@ -2,18 +2,18 @@ use super::error::AmtError;
 use crate::{
     constants::{
         G1Curve, Scalar, BLOB_COL_LOG, BLOB_COL_N, BLOB_ROW_ENCODED,
-        BLOB_ROW_LOG, BLOB_ROW_N, PE,
+        BLOB_ROW_LOG, BLOB_ROW_N, G1A, PE,
     },
     ZgSignerParams,
 };
 use amt::{BlobRow, Proof};
-use ark_ec::CurveGroup;
+use ark_ec::AffineRepr;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 
 #[derive(Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct EncodedSliceAMT {
     pub index: usize, /* index: 0, 1, ..., BLOB_ROW_ENCODED - 1 */
-    pub commitment: G1Curve,
+    pub commitment: G1A,
     pub row: BlobRow<PE, BLOB_COL_LOG, BLOB_ROW_LOG>, /* index in half, row,
                                                        * proof */
 }
@@ -28,7 +28,7 @@ impl PartialEq for EncodedSliceAMT {
 
 impl EncodedSliceAMT {
     pub(crate) fn new(
-        index: usize, commitment: G1Curve,
+        index: usize, commitment: G1A,
         row: BlobRow<PE, BLOB_COL_LOG, BLOB_ROW_LOG>,
     ) -> Self {
         Self {
@@ -40,7 +40,7 @@ impl EncodedSliceAMT {
 
     pub(crate) fn index(&self) -> usize { self.index }
 
-    pub(crate) fn fields(&self) -> (G1Curve, Proof<PE>, G1Curve) {
+    pub(crate) fn fields(&self) -> (G1A, Proof<PE>, G1A) {
         (
             self.commitment,
             self.row.proof.clone(),
@@ -54,9 +54,7 @@ impl EncodedSliceAMT {
         &self, encoder_amt: &ZgSignerParams, authoritative_commitment: &G1Curve,
     ) -> Result<(), AmtError> {
         // verify authoritative_commitment
-        if self.commitment.into_affine()
-            != authoritative_commitment.into_affine()
-        {
+        if &self.commitment.into_group() != authoritative_commitment {
             return Err(AmtError::IncorrectCommitment);
         }
         // verify row.len() (local)
@@ -88,7 +86,7 @@ impl EncodedSliceAMT {
         }
 
         self.row
-            .verify(&encoder_amt.amt_list[coset_idx], self.commitment)
+            .verify(&encoder_amt.amt_list[coset_idx], self.commitment.into())
             .map_err(|err| AmtError::IncorrectProof {
                 coset_index: coset_idx,
                 amt_index: self.row.index,
