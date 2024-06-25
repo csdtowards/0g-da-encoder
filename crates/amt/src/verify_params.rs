@@ -6,7 +6,7 @@ use crate::{
     error, AMTParams,
 };
 
-use crate::ec_algebra::{Fr, G1Aff, G2Aff, Pairing, G1, G2};
+use crate::ec_algebra::{Fr, G1Aff, G2Aff, Pairing, G1};
 
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use tracing::{debug, info, instrument};
@@ -22,8 +22,8 @@ use ark_bn254::Bn254;
 pub struct AMTVerifyParams<PE: Pairing> {
     pub basis: Vec<G1Aff<PE>>,
     pub vanishes: Vec<Vec<G2Aff<PE>>>,
-    pub g2: G2<PE>,
-    pub high_g2: G2<PE>,
+    pub g2: G2Aff<PE>,
+    pub high_g2: G2Aff<PE>,
 }
 
 #[cfg(not(feature = "cuda-bls12-381"))]
@@ -134,8 +134,8 @@ where G1<PE>: VariableBaseMSM<MulBase = G1Aff<PE>>
 #[allow(clippy::too_many_arguments)]
 pub fn verify_amt_proof<PE: Pairing>(
     basis: &[G1Aff<PE>], vanishes: &[Vec<G2Aff<PE>>], ri_data: &[Fr<PE>],
-    batch_index: usize, proof: &Proof<PE>, commitment: G1<PE>, g2: &G2<PE>,
-    high_commitment: G1<PE>, high_g2: &G2<PE>,
+    batch_index: usize, proof: &Proof<PE>, commitment: G1<PE>, g2: &G2Aff<PE>,
+    high_commitment: G1<PE>, high_g2: &G2Aff<PE>,
     deferred_verifier: Option<DeferredVerifier<PE>>,
 ) -> Result<(), AmtProofError>
 where
@@ -172,7 +172,7 @@ where
             commitment.into_group(),
             *g2,
             quotient.into_group(),
-            vanish.into_group(),
+            vanish,
             KzgError(d),
         )?;
         overall_commitment += commitment;
@@ -197,8 +197,8 @@ where
 }
 
 fn pairing_check<PE: Pairing>(
-    task_collector: &mut Option<Vec<PairingTask<PE>>>, a: G1<PE>, b: G2<PE>,
-    c: G1<PE>, d: G2<PE>, error: AmtProofError,
+    task_collector: &mut Option<Vec<PairingTask<PE>>>, a: G1<PE>, b: G2Aff<PE>,
+    c: G1<PE>, d: G2Aff<PE>, error: AmtProofError,
 ) -> Result<(), AmtProofError> {
     if let Some(collector) = task_collector {
         collector.push((a, b, c, d, error));

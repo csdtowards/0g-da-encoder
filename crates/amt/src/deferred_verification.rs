@@ -10,17 +10,18 @@ use std::sync::Mutex;
 use rayon::prelude::*;
 
 use crate::{
-    ec_algebra::{Fr, Pairing, G1, G2},
+    ec_algebra::{Fr, G2Aff, Pairing, G1},
     AmtProofError,
 };
 
-pub type PairingTask<PE> = (G1<PE>, G2<PE>, G1<PE>, G2<PE>, AmtProofError);
+pub type PairingTask<PE> =
+    (G1<PE>, G2Aff<PE>, G1<PE>, G2Aff<PE>, AmtProofError);
 
 type VerifierInner<PE> = (
     Vec<G1<PE>>,
-    Vec<G2<PE>>,
+    Vec<G2Aff<PE>>,
     Vec<G1<PE>>,
-    Vec<G2<PE>>,
+    Vec<G2Aff<PE>>,
     Vec<AmtProofError>,
 );
 #[derive(Clone)]
@@ -86,7 +87,7 @@ impl<PE: Pairing> DeferredVerifier<PE> {
 fn all_same<T: Eq>(input: &[T]) -> bool { input.iter().all(|x| *x == input[0]) }
 
 fn pairing_rlc<PE: Pairing>(
-    g1: &[G1<PE>], g2: &[G2<PE>], coeff: &[Fr<PE>],
+    g1: &[G1<PE>], g2: &[G2Aff<PE>], coeff: &[Fr<PE>],
 ) -> PairingOutput<PE> {
     if all_same(g2) {
         let g1 = CurveGroup::normalize_batch(g1);
@@ -98,7 +99,6 @@ fn pairing_rlc<PE: Pairing>(
             .map(|(x, y)| *x * *y)
             .collect();
         let g1 = CurveGroup::normalize_batch(&g1[..]);
-        let g2 = CurveGroup::normalize_batch(g2);
         PE::multi_pairing(g1, g2)
     }
 }
