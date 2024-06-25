@@ -71,10 +71,7 @@ impl AMTParams<PE> {
             .map(PrimeFieldRepr::to_bigint)
             .collect();
 
-        // let affine_size = std::mem::size_of::<<G1Aff<PE> as
-        // GpuRepr>::Repr>();
-        // assert_eq!(gpu_bases.size(), input_len *
-        // (height + 2) * affine_size);
+        assert_eq!(gpu_bases.size(), input_len * (height + 2));
         assert_eq!(exponents.len(), input_len);
 
         let lines: Vec<_> = multiple_multiexp_mt(
