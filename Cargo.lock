@@ -2268,6 +2268,7 @@ dependencies = [
  "ark-poly",
  "ark-std",
  "rand 0.8.5",
+ "rayon",
  "zg-encoder",
 ]
 
