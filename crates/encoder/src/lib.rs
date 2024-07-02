@@ -1,5 +1,8 @@
 extern crate amt as amt_crate;
 
+#[macro_use]
+extern crate ark_std;
+
 mod amt;
 pub mod constants;
 mod encoder;

@@ -5,5 +5,5 @@ mod poly;
 mod utils;
 mod zpoly;
 
-pub use data_poly::data_poly;
+pub use data_poly::recovery_from_da_slices;
 pub use error::RecoveryErr;

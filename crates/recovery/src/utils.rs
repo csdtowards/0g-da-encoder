@@ -13,7 +13,7 @@ use ark_std::{
     UniformRand,
 };
 use zg_encoder::constants::{
-    Scalar, BLOB_COL_LOG, BLOB_ROW_LOG, COSET_N, PE, RAW_BLOB_SIZE,
+    Scalar, BLOB_COL_LOG, BLOB_ROW_LOG, PE, RAW_BLOB_SIZE,
 };
 
 use crate::{poly::Poly, zpoly::COSET_MORE};
@@ -87,9 +87,7 @@ pub fn coeffs_to_evals_larger(coeffs: &[Scalar]) -> Vec<Scalar> {
 }
 
 pub fn coeffs_to_evals(coeffs: &[Scalar]) -> Vec<Scalar> {
-    (0..COSET_N)
-        .flat_map(|coset_idx| coeffs_to_evals_coset(coeffs, coset_idx))
-        .collect()
+    coeffs_to_evals_coset(coeffs, 0)
 }
 
 pub fn evals_to_poly(evals: &[Scalar]) -> Poly {

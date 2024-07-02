@@ -5,8 +5,11 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use ark_ff::{batch_inversion, Field, One, Zero};
 use ark_std::{cfg_iter, rand, UniformRand};
-use zg_encoder::constants::{
-    Scalar, BLOB_COL_N, BLOB_ROW_ENCODED, BLOB_ROW_N, RAW_BLOB_SIZE,
+use zg_encoder::{
+    constants::{
+        Scalar, BLOB_COL_N, BLOB_ROW_ENCODED, BLOB_ROW_N, RAW_BLOB_SIZE,
+    },
+    RawBlob,
 };
 
 use crate::{
@@ -66,9 +69,9 @@ fn convert_input(
     (erasured_row_ids, data_times_z)
 }
 
-pub fn data_poly(
+pub fn recovery_from_da_slices(
     data: &BTreeMap<usize, Vec<Scalar>>,
-) -> Result<Vec<Scalar>, RecoveryErr> {
+) -> Result<RawBlob, RecoveryErr> {
     check_input(data)?;
     let (erasured_row_ids, erasured_data) = convert_input(data);
     const TRY_TIMES: usize = 100;
@@ -109,7 +112,7 @@ pub fn data_poly(
         let data_coeffs = fx_to_fkx(&data_kx_coeffs, k_inverse);
         assert!(data_coeffs.len() <= RAW_BLOB_SIZE + 1);
 
-        return Ok(coeffs_to_evals(&data_coeffs));
+        return Ok(RawBlob::new(coeffs_to_evals(&data_coeffs)));
     }
     Err(RecoveryErr::ExtaustiveK)
 }
@@ -117,7 +120,7 @@ pub fn data_poly(
 #[cfg(test)]
 mod tests {
     use crate::{
-        data_poly::data_poly,
+        data_poly::recovery_from_da_slices,
         error::RecoveryErr,
         utils::{
             coeffs_to_evals_larger, evals_to_poly, random_row_ids,
@@ -129,14 +132,17 @@ mod tests {
     use ark_ff::Zero;
     use ark_std::rand::{thread_rng, Rng};
     use std::collections::BTreeMap;
-    use zg_encoder::constants::{
-        Scalar, BLOB_COL_LOG, BLOB_COL_N, BLOB_ROW_ENCODED, BLOB_ROW_LOG,
-        BLOB_ROW_N, COSET_N, ENCODED_BLOB_SIZE, PE, RAW_BLOB_SIZE,
+    use zg_encoder::{
+        constants::{
+            Scalar, BLOB_COL_LOG, BLOB_COL_N, BLOB_ROW_ENCODED, BLOB_ROW_LOG,
+            BLOB_ROW_N, COSET_N, ENCODED_BLOB_SIZE, PE, RAW_BLOB_SIZE,
+        },
+        RawBlob,
     };
 
     fn get_data_poly(
         row_ids: &[usize], data_before_erasured: &[Scalar],
-    ) -> Result<Vec<Scalar>, RecoveryErr> {
+    ) -> Result<RawBlob, RecoveryErr> {
         let data: BTreeMap<usize, Vec<Scalar>> = row_ids
             .iter()
             .map(|row_idx| {
@@ -152,12 +158,12 @@ mod tests {
                 )
             })
             .collect();
-        data_poly(&data)
+        recovery_from_da_slices(&data)
     }
 
     fn check_data_poly(row_ids: &[usize], data_before_erasured: &[Scalar]) {
         let evals = get_data_poly(row_ids, data_before_erasured).unwrap();
-        assert_eq!(data_before_erasured, evals);
+        assert_eq!(data_before_erasured[..RAW_BLOB_SIZE], *evals);
     }
 
     fn random_data_before_erasured<R: Rng>(
@@ -201,14 +207,14 @@ mod tests {
         let row_ids: Vec<usize> =
             (BLOB_ROW_ENCODED - BLOB_ROW_N + 2..BLOB_ROW_ENCODED + 1).collect();
         assert_eq!(
-            get_data_poly(&row_ids, data_before_erasured),
-            Err(RecoveryErr::TooFewRowIds)
+            get_data_poly(&row_ids, data_before_erasured).unwrap_err(),
+            RecoveryErr::TooFewRowIds
         );
         let row_ids: Vec<usize> =
             (BLOB_ROW_ENCODED - BLOB_ROW_N + 1..BLOB_ROW_ENCODED + 1).collect();
         assert_eq!(
-            get_data_poly(&row_ids, data_before_erasured),
-            Err(RecoveryErr::RowIdOverflow)
+            get_data_poly(&row_ids, data_before_erasured).unwrap_err(),
+            RecoveryErr::RowIdOverflow
         );
 
         for _ in 0..3 {
