@@ -320,7 +320,11 @@ mod tests {
                 .unwrap();
         }
 
+        #[cfg(not(feature = "cuda-verifier"))]
         assert!(deferred_verifier.fast_check());
-        deferred_verifier.check().unwrap();
+        #[cfg(feature = "cuda-verifier")]
+        assert!(deferred_verifier.fast_check_gpu());
+
+        deferred_verifier.check_pairing().unwrap();
     }
 }

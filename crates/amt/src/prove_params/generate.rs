@@ -1,4 +1,4 @@
-use std::{fs::File, path::Path};
+use std::{fs::File, io::BufReader, path::Path};
 
 use super::AMTParams;
 use crate::{
@@ -65,7 +65,7 @@ impl AMTParams<Bn254> {
     }
 
     fn load_cached_mont(file: impl AsRef<Path>) -> Result<Self, error::Error> {
-        let buffer = File::open(file)?;
+        let buffer = BufReader::new(File::open(file)?);
         crate::fast_serde_bn254::read_amt_params(buffer)
     }
 }
@@ -109,7 +109,7 @@ impl<PE: Pairing> AMTParams<PE> {
     }
 
     fn load_cached(file: impl AsRef<Path>) -> Result<Self, error::Error> {
-        let mut buffer = File::open(file)?;
+        let mut buffer = BufReader::new(File::open(file)?);
         Ok(CanonicalDeserialize::deserialize_uncompressed_unchecked(
             &mut buffer,
         )?)

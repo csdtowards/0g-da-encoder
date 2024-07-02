@@ -1,41 +1,59 @@
 use ark_ec::{pairing::PairingOutput, CurveGroup, VariableBaseMSM};
-use std::sync::Arc;
-
-use ark_ff::Field;
-use ark_std::{cfg_into_iter, cfg_iter, UniformRand};
+use ark_ff::{Field, PrimeField};
+use ark_std::{cfg_into_iter, cfg_iter, UniformRand, Zero};
 use rand::rngs::OsRng;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
+
+use crate::{
+    ec_algebra::{Fr, FrInt, G1Aff, G2Aff, Pairing, G1},
+    AmtProofError,
+};
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
-use crate::{
-    ec_algebra::{Fr, G2Aff, Pairing, G1},
-    AmtProofError,
-};
-
 pub type PairingTask<PE> =
     (G1<PE>, G2Aff<PE>, G1<PE>, G2Aff<PE>, AmtProofError);
 
-type VerifierInner<PE> = (
+type PairingVerifier<PE> = (
     Vec<G1<PE>>,
     Vec<G2Aff<PE>>,
     Vec<G1<PE>>,
     Vec<G2Aff<PE>>,
     Vec<AmtProofError>,
 );
+
+#[derive(Clone, Default)]
+struct MsmVerifier<PE: Pairing> {
+    basis: Vec<G1Aff<PE>>,
+    bigint: Vec<FrInt<PE>>,
+    answer: G1<PE>,
+}
+
 #[derive(Clone)]
-pub struct DeferredVerifier<PE: Pairing>(Arc<Mutex<VerifierInner<PE>>>);
+pub struct DeferredVerifier<PE: Pairing> {
+    pairing: Arc<Mutex<PairingVerifier<PE>>>,
+    msm: Arc<Mutex<MsmVerifier<PE>>>,
+}
 
 impl<PE: Pairing> Default for DeferredVerifier<PE> {
     fn default() -> Self { Self::new() }
 }
 
 impl<PE: Pairing> DeferredVerifier<PE> {
-    pub fn new() -> Self { Self(Arc::new(Mutex::new(Default::default()))) }
+    pub fn new() -> Self {
+        Self {
+            pairing: Arc::new(Mutex::new(Default::default())),
+            msm: Arc::new(Mutex::new(MsmVerifier {
+                basis: vec![],
+                bigint: vec![],
+                answer: G1::<PE>::zero(),
+            })),
+        }
+    }
 
     pub fn record_pairing(&self, tasks: Vec<PairingTask<PE>>) {
-        let mut lock_guard = self.0.lock().unwrap();
+        let mut lock_guard = self.pairing.lock().unwrap();
         let (va, vb, vc, vd, verror) = &mut *lock_guard;
         for (a, b, c, d, error) in tasks.into_iter() {
             va.push(a);
@@ -46,8 +64,36 @@ impl<PE: Pairing> DeferredVerifier<PE> {
         }
     }
 
+    pub fn record_msm(
+        &self, basis: &[G1Aff<PE>], bigint: &[Fr<PE>], answer: G1<PE>,
+    ) {
+        assert_eq!(basis.len(), bigint.len());
+
+        let alpha = Fr::<PE>::rand(&mut OsRng);
+        let randomized_bigint: Vec<FrInt<PE>> = cfg_iter!(bigint)
+            .map(|x| (*x * alpha).into_bigint())
+            .collect();
+        let randomized_answer = answer * alpha;
+
+        let mut lock_guard = self.msm.lock().unwrap();
+        let MsmVerifier {
+            basis: current_basis,
+            bigint,
+            answer,
+        } = &mut *lock_guard;
+
+        current_basis.extend(basis);
+        bigint.extend(randomized_bigint);
+
+        *answer += randomized_answer;
+    }
+
     pub fn fast_check(&self) -> bool {
-        let lock_guard = self.0.lock().unwrap();
+        self.fast_check_pairing() && self.fast_check_msm()
+    }
+
+    fn fast_check_pairing(&self) -> bool {
+        let lock_guard = self.pairing.lock().unwrap();
         let (va, vb, vc, vd, _) = &*lock_guard;
 
         let n = va.len() as u64;
@@ -65,8 +111,23 @@ impl<PE: Pairing> DeferredVerifier<PE> {
         left == right
     }
 
-    pub fn check(&self) -> Result<(), AmtProofError> {
-        let lock_guard = self.0.lock().unwrap();
+    fn fast_check_msm(&self) -> bool {
+        let lock_guard = self.msm.lock().unwrap();
+        let MsmVerifier {
+            basis,
+            bigint,
+            answer,
+        } = &*lock_guard;
+
+        if basis.is_empty() {
+            return true;
+        }
+
+        G1::<PE>::msm_bigint(&basis[..], &bigint[..]) == *answer
+    }
+
+    pub fn check_pairing(&self) -> Result<(), AmtProofError> {
+        let lock_guard = self.pairing.lock().unwrap();
         let (va, vb, vc, vd, ve) = &*lock_guard;
 
         let n = va.len();
@@ -99,6 +160,64 @@ fn pairing_rlc<PE: Pairing>(
             .map(|(x, y)| *x * *y)
             .collect();
         let g1 = CurveGroup::normalize_batch(&g1[..]);
-        PE::multi_pairing(g1, g2)
+
+        #[cfg(not(feature = "parallel"))]
+        let ans = PE::multi_pairing(g1, g2);
+        #[cfg(feature = "parallel")]
+        let ans = multi_pairing_parallel(&g1, g2);
+        ans
+    }
+}
+
+#[cfg(feature = "parallel")]
+pub fn multi_pairing_parallel<PE: Pairing>(
+    g1: &[G1Aff<PE>], g2: &[G2Aff<PE>],
+) -> PairingOutput<PE> {
+    let min_elements_per_thread = 1;
+    let num_cpus_available = rayon::current_num_threads();
+    let num_elems = g1.len();
+    let num_elem_per_thread =
+        std::cmp::max(num_elems / num_cpus_available, min_elements_per_thread);
+
+    let thread_outputs: Vec<_> = g1
+        .par_chunks(num_elem_per_thread)
+        .zip(g2.par_chunks(num_elem_per_thread))
+        .map(|(a, b)| PE::multi_pairing(a, b))
+        .collect();
+
+    thread_outputs.into_par_iter().sum()
+}
+
+#[cfg(feature = "cuda-verifier")]
+impl DeferredVerifier<ark_bn254::Bn254> {
+    pub fn fast_check_gpu(&self) -> bool {
+        std::thread::scope(|s| {
+            let pairing_check_handle = s.spawn(|| self.fast_check_pairing());
+            self.fast_check_msm_gpu() && pairing_check_handle.join().unwrap()
+        })
+    }
+
+    fn fast_check_msm_gpu(&self) -> bool {
+        let lock_guard = self.msm.lock().unwrap();
+        let MsmVerifier {
+            basis,
+            bigint,
+            answer,
+        } = &*lock_guard;
+
+        if basis.is_empty() {
+            return true;
+        }
+
+        let acc = ag_cuda_ec::multiexp::multiexp_mt(
+            &basis[..],
+            &bigint[..],
+            1024,
+            8,
+            true,
+        )
+        .unwrap();
+
+        cfg_iter!(acc).sum::<G1<ark_bn254::Bn254>>() == *answer
     }
 }
