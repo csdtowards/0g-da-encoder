@@ -25,5 +25,6 @@ pub const BLOB_COL_N: usize = 1 << BLOB_COL_LOG;
 pub const RAW_BLOB_SIZE: usize = BLOB_ROW_N * BLOB_COL_N;
 pub const ENCODED_BLOB_SIZE: usize = BLOB_ROW_ENCODED * BLOB_COL_N;
 pub const MAX_BLOB_SIZE: usize = RAW_UNIT * BLOB_ROW_N * BLOB_COL_N;
+pub const MAX_RAW_DATA_SIZE: usize = MAX_BLOB_SIZE - 4;
 
 const_assert!(1usize << <Scalar as FftField>::TWO_ADICITY >= ENCODED_BLOB_SIZE);

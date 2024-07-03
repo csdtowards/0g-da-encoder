@@ -1,5 +1,8 @@
 extern crate amt as amt_crate;
 
+#[macro_use]
+extern crate ark_std;
+
 mod amt;
 pub mod constants;
 mod encoder;
@@ -20,7 +23,7 @@ pub use encoder::{
 pub use merkle::{blob::EncodedBlobMerkle, slice::EncodedSliceMerkle};
 pub use raw_blob::RawBlob;
 pub use raw_data::RawData;
-pub use utils::scalar_to_h256;
+pub use utils::{raw_unit_to_scalar, scalar_to_h256};
 
 pub type ZgEncoderParams = ::amt::EncoderParams<
     ark_bn254::Bn254,

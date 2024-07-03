@@ -170,7 +170,8 @@ mod tests {
     use rand::{rngs::StdRng, Rng, SeedableRng};
     use test_case::test_case;
     use zg_encoder::{
-        constants::MAX_BLOB_SIZE, EncodedBlob, EncoderError, RawBlob, RawData,
+        constants::{MAX_BLOB_SIZE, MAX_RAW_DATA_SIZE},
+        EncodedBlob, EncoderError, RawBlob, RawData,
     };
 
     use crate::{EncoderService, SignerService};
@@ -186,8 +187,8 @@ mod tests {
 
     #[test_case(1 => Ok(()); "one sized data")]
     #[test_case(1234 => Ok(()); "normal sized data")]
-    #[test_case(MAX_BLOB_SIZE => Ok(()); "exact sized data")]
-    #[test_case(MAX_BLOB_SIZE + 1 => Err(EncoderError::TooLargeBlob{actual: MAX_BLOB_SIZE + 1, expected_max: MAX_BLOB_SIZE}); "overflow sized data")]
+    #[test_case(MAX_RAW_DATA_SIZE => Ok(()); "exact sized data")]
+    #[test_case(MAX_RAW_DATA_SIZE + 1 => Err(EncoderError::TooLargeBlob{actual: MAX_RAW_DATA_SIZE + 1, expected_max: MAX_RAW_DATA_SIZE}); "overflow sized data")]
     fn test_serde(num_bytes: usize) -> Result<(), EncoderError> {
         let seed = 22u64;
         let mut rng = StdRng::seed_from_u64(seed);
