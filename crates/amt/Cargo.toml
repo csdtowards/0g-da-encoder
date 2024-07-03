@@ -35,8 +35,10 @@ tracing-subscriber = { workspace = true }
 default = []
 parallel = ["ark-poly/parallel", "ark-ec/parallel", "ark-std/parallel", "rayon"]
 cuda = ["ag-types", "ag-cuda-ec", "parking_lot"]
+cuda-verifier = ["cuda"]
 cuda-bn254 = ["cuda", "ag-cuda-ec/bn254"]
 cuda-bls12-381 = ["cuda", "ag-cuda-ec/bls12-381"]
+
 
 [[bin]]
 name = "build_params"

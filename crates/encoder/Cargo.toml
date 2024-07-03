@@ -36,6 +36,7 @@ test-case = "1.2.3"
 [features]
 default = []
 parallel = ["ark-poly/parallel", "ark-ec/parallel", "amt/parallel", "rayon"]
+cuda-verifier = ["amt/cuda-verifier"]
 cuda = ["amt/cuda-bn254"]
 testonly_code = []
 production_mode = []

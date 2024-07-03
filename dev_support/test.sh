@@ -45,6 +45,8 @@ if [[ $CUDA_TEST_EXITCODE -ne 80 ]]; then
     cargo check --all --features cuda
     echoStep "Check all tests (cuda)"
     cargo check --all --tests --benches --features cuda
+    echoStep "Check all tests (cuda-verifier)"
+    cargo check --all --tests --benches --features cuda-verifier
 fi
 
 echoStep "Check clippy"
@@ -54,6 +56,8 @@ cargo clippy --features parallel
 if [[ $CUDA_TEST_EXITCODE -ne 80 ]]; then
     echoStep "Check clippy (cuda)"
     cargo clippy --features cuda
+    echoStep "Check clippy (cuda-verifier)"
+    cargo clippy --features cuda-verifier
 fi 
 
 
@@ -71,4 +75,6 @@ if [[ $CUDA_TEST_EXITCODE -eq 0 ]]; then
     cargo test -r -p amt --features amt/parallel,amt/cuda-bn254
     echoStep "Test (cuda-bls12-381)"
     cargo test -r -p amt --features amt/parallel,amt/cuda-bls12-381
+    echoStep "Test (cuda-verifier)"
+    cargo test -r -p zg-encoder --features zg-encoder/cuda,zg-encoder/cuda-verifier test_deferred_verify
 fi

@@ -1,40 +1,83 @@
+#[macro_use]
+extern crate tracing;
+
+#[macro_use]
+extern crate ark_std;
+
 use std::time::{Duration, Instant};
+
+#[cfg(feature = "parallel")]
+use rayon::prelude::*;
 
 use amt::DeferredVerifier;
 use ark_bn254::Bn254;
 use rand::{rngs::OsRng, Rng};
+use tracing::Level;
+
 use zg_encoder::{
-    constants::{G1Curve, BLOB_COL_N, BLOB_ROW_ENCODED, BLOB_ROW_N, RAW_UNIT},
+    constants::{
+        G1Curve, BLOB_COL_N, BLOB_ROW_ENCODED, BLOB_ROW_N, RAW_BLOB_SIZE,
+        RAW_UNIT,
+    },
     EncodedBlob, EncodedSlice, RawBlob, RawData, ZgEncoderParams,
     ZgSignerParams,
 };
 
+const BATCHES: usize = 20000 / RAW_BLOB_SIZE + 1;
+
+fn init_logger() {
+    tracing_subscriber::fmt()
+        .with_max_level(Level::DEBUG)
+        // .with_span_events(tracing_subscriber::fmt::format::FmtSpan::CLOSE)
+        .with_target(false)
+        .init();
+}
+
 fn main() {
+    init_logger();
+
+    #[cfg(feature = "cuda")]
+    ag_cuda_ec::init_local_workspace();
+
+    info!("load params");
     let param_dir = "../crates/amt/pp";
     let params = ZgEncoderParams::from_dir_mont(param_dir, true, None);
     let ver_params = ZgSignerParams::from_dir_mont(param_dir);
 
+    bench_no_defer(&params, &ver_params);
+    bench_defer(&params, &ver_params);
+}
+
+fn bench_no_defer(params: &ZgEncoderParams, ver_params: &ZgSignerParams) {
     let mut total_duration = Duration::from_secs(0);
 
-    for _ in 0..10 {
+    for round in 0..BATCHES {
+        debug!(round, "make slice");
         let (commitment, root, slices) = make_slices(&params);
+
+        debug!(round, "start verify");
         let start = Instant::now();
-        for slice in slices {
-            slice.verify(&ver_params, &commitment, &root, None).unwrap();
-        }
+        cfg_iter!(slices).for_each(|slice| {
+            slice.verify(&ver_params, &commitment, &root, None).unwrap()
+        });
         total_duration += start.elapsed();
     }
-    println!(
-        "Original: {:?}  / line",
-        total_duration / BLOB_ROW_ENCODED as u32 / 10
+    info!(
+        "Non deferred verifier: {:?} per line",
+        total_duration / BLOB_ROW_ENCODED as u32 / BATCHES as u32
     );
+}
 
+fn bench_defer(params: &ZgEncoderParams, ver_params: &ZgSignerParams) {
     let defered_verifier = DeferredVerifier::<Bn254>::new();
     let mut instant_duration = Duration::from_secs(0);
-    for _ in 0..10 {
+    for round in 0..BATCHES {
+        debug!(round, "make slice");
         let (commitment, root, slices) = make_slices(&params);
+
         let start = Instant::now();
-        for slice in slices {
+        debug!(round, "start verify");
+        cfg_iter!(slices).for_each(|slice| {
             slice
                 .verify(
                     &ver_params,
@@ -42,20 +85,31 @@ fn main() {
                     &root,
                     Some(defered_verifier.clone()),
                 )
-                .unwrap();
-        }
+                .unwrap()
+        });
         instant_duration += start.elapsed();
     }
-    instant_duration /= BLOB_ROW_ENCODED as u32 * 10;
+    instant_duration /= (BLOB_ROW_ENCODED * BATCHES) as u32;
+
     let start = Instant::now();
+
+    #[cfg(feature = "cuda-verifier")]
+    assert!(defered_verifier.fast_check_gpu());
+    #[cfg(not(feature = "cuda-verifier"))]
     assert!(defered_verifier.fast_check());
-    let deferred_duration = start.elapsed() / BLOB_ROW_ENCODED as u32 / 10;
-    println!(
-        "Optimized Total elapsed {:?} + {:?} = {:?} / line",
+
+    let deferred_duration = start.elapsed();
+    let deferred_duration_per_line =
+        deferred_duration / BLOB_ROW_ENCODED as u32 / BATCHES as u32;
+
+    info!(
+        "Deferred verifier elapsed {:?} + {:?} = {:?} per line",
         instant_duration,
-        deferred_duration,
-        instant_duration + deferred_duration
+        deferred_duration_per_line,
+        instant_duration + deferred_duration_per_line
     );
+
+    info!("Total deferred duration {:?}", deferred_duration);
 }
 
 fn make_slices(

@@ -1,4 +1,4 @@
-use std::{fs::File, path::Path};
+use std::{fs::File, io::BufReader, path::Path};
 
 use crate::{
     amtp_verify_file_name,
@@ -8,6 +8,7 @@ use crate::{
 
 use crate::ec_algebra::{Fr, G1Aff, G2Aff, Pairing, G1};
 
+use ark_ff::Zero;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use tracing::{debug, info, instrument};
 
@@ -101,7 +102,7 @@ impl<PE: Pairing> AMTVerifyParams<PE> {
     }
 
     fn load_cached(file: impl AsRef<Path>) -> Result<Self, error::Error> {
-        let mut buffer = File::open(file)?;
+        let mut buffer = BufReader::new(File::open(file)?);
         Ok(CanonicalDeserialize::deserialize_uncompressed_unchecked(
             &mut buffer,
         )?)
@@ -157,13 +158,7 @@ where
     }
     assert!(batch_index < num_batch);
 
-    let self_commitment: G1<PE> = VariableBaseMSM::msm(
-        &basis[batch_index * batch..(batch_index + 1) * batch],
-        ri_data,
-    )
-    .unwrap();
-
-    let mut overall_commitment = self_commitment;
+    let mut acc_commitment = G1::<PE>::zero();
     for (d, (commitment, quotient)) in proof.iter().enumerate().rev() {
         let vanish_index = batch_index >> (proof_depth - 1 - d);
         let vanish = vanishes[d][vanish_index ^ 1];
@@ -175,11 +170,30 @@ where
             vanish,
             KzgError(d),
         )?;
-        overall_commitment += commitment;
+        acc_commitment += commitment;
     }
-    if overall_commitment != commitment {
-        return Err(InconsistentCommitment);
+
+    // Defer msm verification only if cuda verifier is enabled.
+    if let Some(v) = cfg!(feature = "cuda-verifier")
+        .then_some(())
+        .and(deferred_verifier.as_ref())
+    {
+        v.record_msm(
+            &basis[batch_index * batch..(batch_index + 1) * batch],
+            ri_data,
+            commitment - acc_commitment,
+        )
+    } else {
+        let self_commitment: G1<PE> = VariableBaseMSM::msm(
+            &basis[batch_index * batch..(batch_index + 1) * batch],
+            ri_data,
+        )
+        .unwrap();
+        if acc_commitment + self_commitment != commitment {
+            return Err(InconsistentCommitment);
+        }
     }
+
     pairing_check::<PE>(
         &mut task_collector,
         high_commitment,
