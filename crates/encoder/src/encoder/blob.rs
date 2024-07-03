@@ -233,7 +233,7 @@ impl EncodedBlob {
 mod tests {
     use super::EncodedBlob;
     use crate::{
-        constants::{BLOB_ROW_ENCODED, MAX_BLOB_SIZE},
+        constants::{BLOB_ROW_ENCODED, MAX_RAW_DATA_SIZE},
         encoder::error::EncoderError,
         raw_blob::RawBlob,
         raw_data::RawData,
@@ -282,8 +282,8 @@ mod tests {
     #[test_case(0 => Ok(()); "zero sized data")]
     #[test_case(1 => Ok(()); "one sized data")]
     #[test_case(1234 => Ok(()); "normal sized data")]
-    #[test_case(MAX_BLOB_SIZE => Ok(()); "exact sized data")]
-    #[test_case(MAX_BLOB_SIZE + 1 => Err(EncoderError::TooLargeBlob { actual: MAX_BLOB_SIZE + 1, expected_max: MAX_BLOB_SIZE }); "overflow sized data")]
+    #[test_case(MAX_RAW_DATA_SIZE => Ok(()); "exact sized data")]
+    #[test_case(MAX_RAW_DATA_SIZE + 1 => Err(EncoderError::TooLargeBlob { actual: MAX_RAW_DATA_SIZE + 1, expected_max: MAX_RAW_DATA_SIZE }); "overflow sized data")]
     fn test_batcher_and_verify(num_bytes: usize) -> Result<(), EncoderError> {
         let encoded_blob = gen_encoded_blob(num_bytes)?;
 
@@ -296,7 +296,7 @@ mod tests {
     fn test_deferred_verify() {
         let deferred_verifier = DeferredVerifier::<Bn254>::new();
 
-        let mut data = vec![0u8; MAX_BLOB_SIZE];
+        let mut data = vec![0u8; MAX_RAW_DATA_SIZE];
         thread_rng().fill(&mut data[..]);
         let raw_data: RawData = data[..].try_into().unwrap();
         let raw_blob: RawBlob = raw_data.into();
