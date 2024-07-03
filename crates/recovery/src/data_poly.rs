@@ -69,7 +69,7 @@ fn convert_input(
     (erasured_row_ids, data_times_z)
 }
 
-pub fn recovery_from_da_slices(
+pub fn data_poly(
     data: &BTreeMap<usize, Vec<Scalar>>,
 ) -> Result<RawBlob, RecoveryErr> {
     check_input(data)?;
@@ -120,7 +120,7 @@ pub fn recovery_from_da_slices(
 #[cfg(test)]
 mod tests {
     use crate::{
-        data_poly::recovery_from_da_slices,
+        data_poly::data_poly,
         error::RecoveryErr,
         utils::{
             coeffs_to_evals_larger, evals_to_poly, random_row_ids,
@@ -158,7 +158,7 @@ mod tests {
                 )
             })
             .collect();
-        recovery_from_da_slices(&data)
+        data_poly(&data)
     }
 
     fn check_data_poly(row_ids: &[usize], data_before_erasured: &[Scalar]) {

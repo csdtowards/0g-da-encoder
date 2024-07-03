@@ -12,11 +12,31 @@ use ark_std::{
     rand::{seq::SliceRandom, Rng},
     UniformRand,
 };
-use zg_encoder::constants::{
-    Scalar, BLOB_COL_LOG, BLOB_ROW_LOG, PE, RAW_BLOB_SIZE,
+use zg_encoder::{
+    constants::{
+        Scalar, BLOB_COL_LOG, BLOB_ROW_LOG, MAX_BLOB_SIZE, PE, RAW_BLOB_SIZE,
+    },
+    raw_unit_to_scalar,
 };
 
 use crate::{poly::Poly, zpoly::COSET_MORE};
+
+pub fn raw_slice_to_line(slice: &[u8]) -> Result<Vec<Scalar>, String> {
+    if slice.len() != MAX_BLOB_SIZE {
+        return Err("Incorrect raw slice length".to_string());
+    }
+    slice
+        .chunks_exact(32)
+        .map(|x| {
+            assert_eq!(x.len(), 32);
+            if x[31] != 0 {
+                return Err("A cell has more than 248 bits data".to_string());
+            }
+
+            Ok(raw_unit_to_scalar(x))
+        })
+        .collect()
+}
 
 const SPARSE_THRES: usize = 100;
 pub fn many_non_zeros(vec: &[Scalar]) -> bool {

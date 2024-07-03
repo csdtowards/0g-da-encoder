@@ -4,6 +4,9 @@ use ark_ff::{BigInt, MontConfig};
 use rayon::prelude::*;
 use tiny_keccak::{Hasher, Keccak};
 
+#[cfg(target_endian = "big")]
+compile_error!("This code cannot be compiled on big-endian systems.");
+
 pub fn raw_unit_to_scalar(chunk: &[u8]) -> Scalar {
     let mut raw: [u8; 32] = [0u8; 32];
     raw[..31].copy_from_slice(chunk);
